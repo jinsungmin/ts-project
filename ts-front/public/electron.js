@@ -6,6 +6,8 @@ const isDev = require("electron-is-dev");
 
 let mainWindow;
 
+const port = process.env.PORT ? (process.env.PORT - 1) : 3000;
+
 function createWindow() {
   mainWindow = new BrowserWindow({ 
     width: 900, 
@@ -19,7 +21,7 @@ function createWindow() {
   
   mainWindow.loadURL(
     isDev
-      ? "http://localhost:3000"
+      ? `http://localhost:${port}`
       : `file://${path.join(__dirname, "../build/index.html")}`
   );
   
