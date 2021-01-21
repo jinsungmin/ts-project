@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
 
 import axios from 'axios';
 import { useHistory } from "react-router-dom";
@@ -64,7 +63,7 @@ const Main = ({ location }: { location: any }) => {
 
 			})
 			.catch((error) => {
-				alert('error');
+				alert(error.response.data.message);
 			});
 	}
 
@@ -154,12 +153,8 @@ const Main = ({ location }: { location: any }) => {
         alert("로그아웃 되었습니다.");
 				
 				history.push('/');
-				
-				return () => {
-					socket.emit('disconnect');
-		
-					socket.off();
-				}
+
+				window.location.reload();
       })
       .catch((error) => {
 				alert(error.response.data.message);
@@ -216,10 +211,10 @@ const Main = ({ location }: { location: any }) => {
 			</div>
 			<div style={{ marginLeft: '5%', width: '100%' }}>
 				<div style={{ marginRight: '5%', float: 'right', width: '15%' }}>
-					<Button variant="dark" onClick={soloPlay}>혼자두기</Button>
+					<Button variant="dark" onClick={soloPlay} style={{width: '5rem', height:'2rem', marginTop: '0.5rem', textAlign: 'center', padding: '0rem'}}>혼자두기</Button>
 				</div>
-				<div style={{ marginRight: '5%', float: 'right', width: '15%' }}>
-					<Button variant="dark" onClick={signOut}>로그아웃</Button>
+				<div style={{float: 'right', width: '15%'}}>
+					<Button variant="dark" onClick={signOut} style={{width: '5rem', height:'2rem', marginTop: '0.5rem', textAlign: 'center', padding: '0rem'}}>로그아웃</Button>
 				</div>
 			</div>
 		</div>

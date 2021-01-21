@@ -56,7 +56,7 @@ const Promotion = (props: any) => {
 					</button>
 				})}
 				<div>
-					<Button onClick={() => onSubmit()}variant="dark" style={{width: '3rem', height:'2rem', marginTop: '1rem', textAlign: 'center', padding: '0rem'}}>승급</Button>
+					<Button onClick={() => onSubmit()} variant="dark" style={{width: '3rem', height:'2rem', marginTop: '1rem', textAlign: 'center', padding: '0rem'}}>승급</Button>
 				</div>
 			</div>}
 			{props.color === 'white' && <div>
@@ -65,6 +65,9 @@ const Promotion = (props: any) => {
 						<Image src={element.image} style={{ width: CELL_SIZE - 10, height: CELL_SIZE - 10, paddingRight: '3px' }} />
 					</button>
 				})}
+				<div>
+					<Button onClick={() => onSubmit()} variant="dark" style={{width: '3rem', height:'2rem', marginTop: '1rem', textAlign: 'center', padding: '0rem'}}>승급</Button>
+				</div>
 			</div>}
 
 		</div>
