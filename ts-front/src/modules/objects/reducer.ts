@@ -17,13 +17,13 @@ const objects = createReducer<ObjectsState, ObjectsAction>(initialState, {
       lived: true,
       color: payload.color,
       image: payload.image,
+      isMoved: false,
     }),
   [TOGGLE_OBJECT]: (state, { payload: id }) =>
     state.map(object => (object.id === id ? { ...object, lived: !object.lived } : object)),
-  [REMOVE_OBJECT]: (state, { payload: id }) =>
-    state.filter(object => object.id !== id),
+  [REMOVE_OBJECT]: (state, { payload }) =>
+    state.filter(object => object.id !== payload.id),
   [CHANGE_OBJECT]: (state, { payload }) =>
-    state.map(object => (object.id === payload.id ? { ...object, lived: payload.lived, x: payload.x, y: payload.y } : object)),
-
+    state.map(object => (object.id === payload.id ? { ...object, lived: payload.lived, x: payload.x, y: payload.y, isMoved: payload.isMoved, image: payload.image, name: payload.name } : object)),
 });
 export default objects;

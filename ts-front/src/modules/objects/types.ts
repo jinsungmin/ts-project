@@ -11,6 +11,7 @@ export type Object = {
   lived: boolean;
   color: boolean;
   image: string;
+  isMoved: boolean;
 };
 
 export type ObjectsState = Object[];

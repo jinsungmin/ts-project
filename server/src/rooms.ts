@@ -1,27 +1,13 @@
 const rooms = [];
 
-const addRoom = ( {id, name, room }) => {
-  // JavaScript Mastery = javascriptmastery
-  console.log('data:', id, name, room);
-  name = name.trim().toLowerCase();
-  room = room.trim().toLowerCase();
+const createRoom = () => {
+  rooms.push({id: rooms.length, user: []});
 
-  for(let i = 0; i < rooms.length; i++) {
-    if(room === rooms[i].room) {
-      rooms[i].name.push(name);
-      rooms[i].id.push(id);
+  return rooms[rooms.length - 1];
+}
 
-      const gameRoom = rooms[i];
-
-      return { gameRoom }
-    }
-  }
-
-  const gameRoom = { id:[id], name:[name], room };
-
-  rooms.push(gameRoom);
-
-  return { gameRoom }
+const pushUserToRoom = (name, room) => {
+  room.user.push({name:name, id: ''});
 }
 
 const removeUserInRoom = (name) => {
@@ -38,21 +24,46 @@ const removeUserInRoom = (name) => {
   return -1;
 }
 
-const removeRoom = (room) => {
-  const index = rooms.findIndex((gameRoom) => gameRoom.room === room);
+const getUserForSend = (roomID, username) => {
+  const index = rooms[roomID].user.findIndex((obj) => obj.name === username);
 
-  if(index !== -1) {
-    rooms.splice(index, 1)[0];
+  return rooms[roomID].user[index].id;
+}
+
+const pushID = (roomID, username, id) => {
+  const index = rooms[roomID].user.findIndex((obj) => obj.name === username);
+
+  rooms[roomID].user[index].id = id;
+
+  //console.log('123:', rooms[roomID]);
+
+  let count = 0;
+  for(let i = 0; i< rooms[roomID].user.length; i++) {
+    if(rooms[roomID].user[i].id) {
+      count++;
+    }
+  }
+  return count;
+}
+
+const leaveRoom = (roomID, id) => {
+  const index = rooms[roomID].user.findIndex((obj) => obj.id === id);
+
+  //rooms[roomID].user[index].id = null;
+  rooms[roomID].user.splice(index, 1)[0];
+  
+}
+
+const removeRoom = (roomID) => {
+  if(roomID !== -1) {
+    rooms.splice(roomID, 1)[0];
   }
 }
 
 const getRoom = (id) => {
-  for(let i = 0; i< rooms.length; i++) {
-    for(let j = 0; j < rooms[i].id.length; j++) {
-      if(id === rooms[i].id[j])
-        return rooms[i];
-    }
-  }
+  const index = rooms.findIndex((room) => room.id = id);
+
+  return rooms[index];
 }
 
 const getIndex = (id) => {
@@ -66,4 +77,4 @@ const getIndex = (id) => {
 
 //const getUsersInRoom = (room) => users.filter((user) => user.room === room);
 
-module.exports = { addRoom, removeRoom, getRoom, getIndex,removeUserInRoom, rooms }
+module.exports = { removeRoom, leaveRoom, getRoom, getIndex,removeUserInRoom, createRoom, pushUserToRoom, pushID, getUserForSend, rooms }

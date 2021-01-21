@@ -8,12 +8,7 @@ import queryString from 'query-string';
 
 import {
   Button,
-  Form,
-  Card,
 } from "react-bootstrap";
-
-import { useSelector, useDispatch } from 'react-redux';
-import { propTypes } from 'react-bootstrap/esm/Image';
 
 import useObjects from '../../hooks/useObjects';
 import useAddObject from '../../hooks/useAddObject';
@@ -32,6 +27,11 @@ import white_rook from '../../images/white_rook.png';
 import white_knight from '../../images/white_knight.png';
 import white_bishop from '../../images/white_bishop.png';
 import white_pawn from '../../images/white_pawn.png';
+import { useHistory } from 'react-router-dom';
+import useUser from '../../hooks/useUser';
+import useRemoveObject from '../../hooks/useRemoveObject';
+import useAddUser from '../../hooks/useAddUser';
+import { isNotEmittedStatement } from 'typescript';
 
 const CELL_SIZE = 60;
 const BOARD_SIZE = 8;
@@ -57,16 +57,32 @@ for (var i = 0; i < BOARD_SIZE; i++) {
   grid[7][i].color = -1;
 }
 
-const Game = (location:any) => {
+const Game = ({ location }: { location: any }) => {
+  const User = useUser();
   const Objects = useObjects();
   const addObject = useAddObject();
   const changeObject = useChangeObject();
+  const removeObject = useRemoveObject();
+  const addUser = useAddUser();
+
   const [board, setBoard] = useState(grid);
   const [turn, setTurn] = useState(1);
   const [clicked, setClicked] = useState({ row: -1, col: -1 });
+  const [roomID, setRoomID] = useState('');
+  const [username, setUsername] = useState('');
+  const [move, setMove] = useState(false);
+
+  const [connected, setConnected] = useState(false);
+  const [take, setTake] = useState(false);
+  const [type, setType] = useState('');
+
+  const [dataIO, setDataIO] = useState(null);
+
+  let history = useHistory();
+
+  const ENDPOINT = 'localhost:8080';
 
   useEffect(() => {
-
     if (Objects.length < 32) {
       addObject('king', 4, 0, black_king, false);
       addObject('queen', 3, 0, black_queen, false);
@@ -91,41 +107,107 @@ const Game = (location:any) => {
         addObject('pawn', i, 6, white_pawn, true);
       }
     }
+    console.log('user:', User);
     console.log('reload');
-  }, [])
 
-  const ENDPOINT = 'localhost:5000';
+    const { roomID, username } = queryString.parse(location.search);
 
-  useEffect(() => {
-    console.log(location.search);
-    const { name, room } = queryString.parse(location.search);
-    console.log('name:',name);
-    console.log('room', room);
+    if (typeof (roomID) === 'string' && typeof (username) === 'string') {
+      setRoomID(roomID);
+      setUsername(username);
+    }
 
     socket = io(ENDPOINT);
 
-    socket.emit('join', { name, room }, () => {
+    socket.emit('roomConnect', { roomID: roomID, username: User[0].username }, () => {
+      setConnected(!connected);
     });
-    /*
+
     return () => {
-      //socket.emit('disconnect');
+      socket.emit('removeRoom', { roomID: roomID });
       socket.off();
     }
-    */
   }, [ENDPOINT, location.search]);
 
   /*
   useEffect(() => {
-    console.log(board);
-    console.log(turn);
-  }, [board])
+    //console.log(location.search);
+    const { roomID, username } = queryString.parse(location.search);
+
+    if (typeof (roomID) === 'string' && typeof (username) === 'string') {
+      setRoomID(roomID);
+      setUsername(username);
+    }
+
+    socket = io(ENDPOINT);
+
+    socket.emit('roomConnect', { roomID: roomID, username: User[0].username }, () => {
+      setConnected(!connected);
+    });
+
+    return () => {
+      socket.emit('removeRoom', { roomID: roomID });
+      socket.off();
+    }
+  }, [ENDPOINT, location.search]);
   */
+  useEffect(() => {
+    socket.on('match', ({ roomID }: any) => {
+      setRoomID(roomID);
+      socket.emit('selectColor', { roomID: roomID }, () => {
+        setTake(!take);
+      })
+    });
+  }, [connected]);
+
+  useEffect(() => {
+    socket.on('setColor', ({ black, white, roomID }: any) => {
+      setRoomID(roomID);
+
+      axios.get(`/api/user/`)
+        .then((res) => {
+          if (black === res.data.user.username) {
+            setType('black');
+            setTurn(1);
+          } else if (white === res.data.user.username) {
+            setType('white');
+            setTurn(1);
+          }
+          //setUsername(res.data.user.username);
+        })
+        .catch((error) => {
+          alert('error');
+        });
+    })
+  }, [take]);
+
+  // 상대방의 움직임 반영
+  useEffect(() => {
+    socket.on('loadMove', ({ roomID, username, data, turn }: any) => {
+      //setDataIO(data);
+
+      // 상대방의 움직임에 따른 보드 변화
+      grid = data.grid;
+
+      console.log('type:', type, 'turn:', turn, data);
+
+      setBoard([...grid]);
+      setTurn(turn);
+      for (let i = 0; i < data.object.length; i++) {
+        changeObject(data.object[i].id, data.object[i].row, data.object[i].col, data.object[i].lived, data.object[i].isMoved, data.object[i].image, data.object[i].name);
+        if(!data.object[i].lived && data.object[i].object === 'king') {
+          alert('game set');
+        }
+      }
+    });
+  }, [move]);
+
   const isInside = (row: number, col: number) => {
     return row >= 0 && row < BOARD_SIZE && col >= 0 && col < BOARD_SIZE;
   }
 
   const clickControl = (rowIdx: number, colIdx: number) => {
-    console.log(rowIdx, colIdx);
+    console.log('click:', rowIdx, colIdx);
     let grid = board;
 
     init(grid, 'click', 0);
@@ -136,12 +218,17 @@ const Game = (location:any) => {
       // 기물의 위치를 해당 위치로 수정
       const destObject: any = Objects.find((element) => { return element.y === rowIdx && element.x === colIdx && element.lived });  // 목적지의 기물
       let objectName = '';
+
+      let objectChange = [];
+
       if (destObject) {
         objectName = destObject.name;
-        changeObject(destObject.id, colIdx, rowIdx, false);
+        changeObject(destObject.id, colIdx, rowIdx, false, true, destObject.image, destObject.name);
+        objectChange.push({ id: destObject.id, row: colIdx, col: rowIdx, lived: false, isMoved: true, object: objectName });
       }
 
-      changeObject(object.id, colIdx, rowIdx, true);
+      changeObject(object.id, colIdx, rowIdx, true, true, object.image, object.name);
+      objectChange.push({ id: object.id, row: colIdx, col: rowIdx, lived: true, isMoved: true, object: objectName });
 
       grid[clicked.row][clicked.col].object = true;
       grid[rowIdx][colIdx].object = false;
@@ -155,9 +242,18 @@ const Game = (location:any) => {
       if (objectName === 'king') {
         console.log('game set');
       }
-      setTurn(turn + 1);
+      //setTurn(turn + 1);
 
       init(grid, 'root', false);
+
+      let data = {
+        grid: grid,
+        object: objectChange,
+      };
+
+      socket.emit('moveObject', { roomID: roomID, username: username, data: data, turn: turn }, () => {
+        setMove(!move);
+      })
     } else {
       grid[rowIdx][colIdx].click++;
 
@@ -183,7 +279,6 @@ const Game = (location:any) => {
   }
 
   const searchRoot = (object: any) => {
-    console.log('object>', object);
     let grid = board;
 
     init(grid, 'root', false);
@@ -307,23 +402,25 @@ const Game = (location:any) => {
   }
 
   const checkDisabled = (rowIdx: number, colIdx: number) => {
-    if (board[rowIdx][colIdx].object) {
-      if (board[rowIdx][colIdx].root) {
-        console.log('dot:', rowIdx, colIdx);
-        return false;
+    if ((type === 'black' && turn % 2 === 1) || (type === 'white' && turn % 2 === 0)) {
+      if (board[rowIdx][colIdx].object) {
+        if (board[rowIdx][colIdx].root) {
+          return false;
+        } else {
+          return true;
+        }
       } else {
-        return true;
+        if (board[rowIdx][colIdx].root) {
+          return false;
+        }
+        if ((board[rowIdx][colIdx].color === 1 && (turn % 2) === 1) || (board[rowIdx][colIdx].color === -1 && (turn % 2) === 0)) {
+          return false;
+        } else {
+          return true;
+        }
       }
     } else {
-      if (board[rowIdx][colIdx].root) {
-        console.log('dot:', rowIdx, colIdx);
-        return false;
-      }
-      if ((board[rowIdx][colIdx].color === 1 && (turn % 2) === 1) || (board[rowIdx][colIdx].color === -1 && (turn % 2) === 0)) {
-        return false;
-      } else {
-        return true;
-      }
+      return true;
     }
   }
 
@@ -335,21 +432,54 @@ const Game = (location:any) => {
     }
   }
 
+  const initState = () => {
+    grid = Array.apply(null, Array(BOARD_SIZE)).map((el, idx) => {
+      return Array.apply(null, Array(BOARD_SIZE)).map((el, idx) => {
+        return { click: 0, object: true, root: false, color: 0 }
+      });
+    });
+    
+    for (var i = 0; i < BOARD_SIZE; i++) {
+      grid[0][i].object = false;
+      grid[1][i].object = false;
+      grid[6][i].object = false;
+      grid[7][i].object = false;
+    
+      grid[0][i].color = 1;
+      grid[1][i].color = 1;
+      grid[6][i].color = -1;
+      grid[7][i].color = -1;
+    }
+    setBoard(grid);
+    setTurn(1);
+  }
+
+  const backToHome = () => {
+    Objects.map(object => {
+      removeObject(object.id);
+    })
+
+    //initState();
+    history.push('/home');
+    window.location.reload();
+  }
+
   const renderBoard = () => {
     return Array.apply(null, Array(BOARD_SIZE)).map((el, rowIdx) => {
       let cellList = Array.apply(null, Array(BOARD_SIZE)).map((el, colIdx) => {
         return (
           <div>
             {(rowIdx + colIdx) % 2 === 0 ? <button onClick={() => clickControl(rowIdx, colIdx)} disabled={checkDisabled(rowIdx, colIdx)} style={{ width: CELL_SIZE, height: CELL_SIZE, backgroundColor: checkColor('#996600', rowIdx, colIdx), border: '1px solid black' }}>
-              {Objects.map(object => {
+              {Objects.map((object, index)=> {
                 if (object.x === colIdx && object.y === rowIdx && object.lived)
-                  return <img src={object.image} style={{ width: CELL_SIZE - 10, height: CELL_SIZE - 10, paddingRight: '3px' }} />
+                  return <img key={index} src={object.image} style={{ width: CELL_SIZE - 10, height: CELL_SIZE - 10, paddingRight: '3px' }} />
               })}
             </button> :
               <button onClick={() => clickControl(rowIdx, colIdx)} disabled={checkDisabled(rowIdx, colIdx)} style={{ width: CELL_SIZE, height: CELL_SIZE, backgroundColor: checkColor('#ffcc66', rowIdx, colIdx), border: '1px solid black' }}>
-                {Objects.map(object => {
-                  if (object.x === colIdx && object.y === rowIdx && object.lived)
-                    return <img src={object.image} style={{ width: CELL_SIZE - 10, height: CELL_SIZE - 10, paddingRight: '3px' }} />
+                {Objects.map((object, index) => {
+                  if (object.x === colIdx && object.y === rowIdx && object.lived) {
+                    return <img key={index} src={object.image} style={{ width: CELL_SIZE - 10, height: CELL_SIZE - 10, paddingRight: '3px' }} />
+                  }
                 })}
               </button>
             }
@@ -380,28 +510,31 @@ const Game = (location:any) => {
       </div>
       <div style={{ marginLeft: '5%', marginTop: '5%', float: 'left', width: '30%', textAlign: 'center' }}>
         <div >
-          {turn % 2 === 1 ? <div style={{fontSize: '1.5rem'}}>BLACK TURN {turn}</div> : <div style={{fontSize: '1.5rem'}}>WHITE TURN {turn}</div>}
+          {turn % 2 === 1 ? <div style={{ fontSize: '1.5rem' }}>BLACK TURN {turn}</div> : <div style={{ fontSize: '1.5rem' }}>WHITE TURN {turn}</div>}
         </div>
-        <div style={{textAlign: 'left', fontSize: '1.2rem'}}>
+        <div style={{ textAlign: 'left', fontSize: '1.2rem' }}>
           Black&nbsp;&nbsp;Dead
         </div>
-        <div style={{textAlign: 'left'}}>
-           
-          {Objects.map(object => {
-            if(!object.lived && !object.color) {
-              return <img src={object.image} style={{ width: '25px', height: '30px', paddingRight: '3px' }} />
+        <div style={{ textAlign: 'left' }}>
+
+          {Objects.map((object, index) => {
+            if (!object.lived && !object.color) {
+              return <img key={index} src={object.image} style={{ width: '25px', height: '30px', paddingRight: '3px' }} />
             }
           })}
         </div>
-        <div style={{textAlign: 'left', fontSize: '1.2rem'}}>
+        <div style={{ textAlign: 'left', fontSize: '1.2rem' }}>
           White Dead
         </div>
-        <div style={{textAlign: 'left'}}>
-          {Objects.map(object => {
-            if(!object.lived && object.color) {
-              return <img src={object.image} style={{ width: '25px', height: '30px', paddingRight: '3px' }} />
-            }
+        <div style={{ textAlign: 'left' }}>
+          {Objects.map((object, index) => {
+            if (!object.lived && object.color) {
+              return <img key={index} src={object.image} style={{ width: '25px', height: '30px', paddingRight: '3px' }} />
+            } 
           })}
+        </div>
+        <div>
+          <Button variant="dark" onClick={backToHome}>뒤로 가기</Button>
         </div>
       </div>
     </div>

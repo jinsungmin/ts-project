@@ -1,4 +1,6 @@
+import { unstable_renderSubtreeIntoContainer } from "react-dom";
 import { createReducer } from "typesafe-actions";
+import { setConstantValue } from "typescript";
 import { ADD_USER, CHANGE_USER } from "./actions";
 import { UserAction, UserState } from "./types";
 
@@ -12,7 +14,7 @@ const user = createReducer<UserState, UserAction>(initialState, {
       username: payload.username,
       win: payload.win,
       lose: payload.lose,
-    }),
+    }), 
   [CHANGE_USER]: (state, { payload }) =>
     state.map(user => true ? ({ email: payload.email, username: payload.username, win: payload.win, lose: payload.lose }) : user),
 });

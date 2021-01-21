@@ -14,26 +14,25 @@ import { useCookies } from "react-cookie";
 import queryString from 'query-string';
 import io from 'socket.io-client';
 
-import {Button} from 'react-bootstrap';
+import { Button } from 'react-bootstrap';
 
 import { ContextMenu, MenuItem, ContextMenuTrigger } from "react-contextmenu";
 
 const ENDPOINT = 'localhost:8080';
 let socket: any;
-const MENU_ID = 'blahblah';
 
-const Main = (location: any) => {
+const Main = ({ location }: { location: any }) => {
 	const Logged = useLogged();
 	const User = useUser();
 	const addUser = useAddUser();
 	const changeUser = useChangeUser();
 	const changeLogged = useChangeLogged();
-	const [roomList, setroomList] = useState([]);
+	const [roomList, setroomList] = useState<any[]>([{ id: '', name: '' }]);
 	const [userList, setUserList] = useState<any[]>([{ id: '', name: '' }]);
 
 	const [request, setRequest] = useState(false);
-	const [confirm, setConfirm] = useState({ type: 'send', username: null });
-	
+	const [confirm, setConfirm] = useState({ type: 'send', username: null, roomID: null });
+
 	let [cookies] = useCookies(["access_token"]);
 	let history = useHistory();
 
@@ -58,6 +57,8 @@ const Main = (location: any) => {
 			.then((res) => {
 				if (User.length === 0) {
 					addUser(res.data.user.email, res.data.user.username, res.data.user.win, res.data.user.lose);
+				} else {
+					changeUser(res.data.user.email, res.data.user.username, res.data.user.win, res.data.user.lose);
 				}
 				changeLogged(true, res.data.user.email);
 
@@ -108,20 +109,19 @@ const Main = (location: any) => {
 	}, [roomList]);
 
 	useEffect(() => {
-		socket.on('request', ({ fromUser, confirm }: any) => {
-			setConfirm({ type: confirm, username: fromUser });
-			console.log('check:', fromUser, confirm);
+		socket.on('request', ({ fromUser, confirm, roomID }: any) => {
+			setConfirm({ type: confirm, username: fromUser, roomID: roomID });
 		});
 	}, [request]);
 
 	const handleRightClick = (name: string) => {	// 유저에게 match 요청
 
-		//console.log('click');
-		console.log('type:', confirm.type);
-		socket.emit('requestMatch', { fromUser: User[0].username, toUser: name, confirm: confirm.type }, () => {
-			loadUser();
-			setRequest(!request);
-		});
+		if (name !== User[0].username) {
+			socket.emit('requestMatch', { fromUser: User[0].username, toUser: name, confirm: confirm.type }, () => {
+				loadUser();
+				setRequest(!request);
+			});
+		}
 	}
 
 	useEffect(() => {
@@ -134,14 +134,37 @@ const Main = (location: any) => {
 					setRequest(!request);
 				});
 			}
-		} else if ( confirm.type === 'start'){
-			alert('start');
+		} else if (confirm.type === 'start') {
+			history.push(`/game?roomID=${confirm.roomID}&username=${confirm.username}`);
+			//window.location.assign(`/game?roomID=${confirm.roomID}&username=${confirm.username}`);
 		}
 	}, [confirm]);
-	
+
 	const soloPlay = () => {
-		history.push('/game')
+		history.push('/game/solo');
 	}
+
+	const signOut = async () => {
+    await axios
+      .post(`/api/auth/logout`)
+      .then((res) => {
+        console.log(res.data);
+        cookies.access_token = null;
+
+        alert("로그아웃 되었습니다.");
+				
+				history.push('/');
+				
+				return () => {
+					socket.emit('disconnect');
+		
+					socket.off();
+				}
+      })
+      .catch((error) => {
+				alert(error.response.data.message);
+      });
+  };
 
 	return (
 		<div>
@@ -149,7 +172,7 @@ const Main = (location: any) => {
 				<ul className="list-group" style={{ overflow: 'auto' }}>
 					{
 						roomList.length ? roomList.map(room => {
-							<li className="list-group-item">{room}</li>
+							return (<li className="list-group-item">Room {room.id}</li>)
 						}) : <li className="list-group-item">생성된 방이 없습니다.</li>
 					}
 				</ul>
@@ -168,6 +191,9 @@ const Main = (location: any) => {
 						userList.map(user => {
 							return (
 								<div>
+									<button onClick={() => handleRightClick(user.name)} style={{ borderBottom: '0.5px solid black', width: '6rem', backgroundColor: '#fffff1' }}>
+										{user.name}
+									</button>{/*
 									<ContextMenuTrigger id="same_unique_identifier">
 										<div style={{ height: '1.6rem' }}>{user.name}</div>
 									</ContextMenuTrigger>
@@ -182,15 +208,18 @@ const Main = (location: any) => {
 												정보 보기
 											</button>
 										</MenuItem>
-									</ContextMenu>
+									</ContextMenu> */}
 								</div>
 							)
 						})}
 				</ul>
 			</div>
-			<div style={{marginLeft: '5%', width:'100%'}}>
-				<div style={{marginRight: '5%', float:'right', width: '15%'}}>
+			<div style={{ marginLeft: '5%', width: '100%' }}>
+				<div style={{ marginRight: '5%', float: 'right', width: '15%' }}>
 					<Button variant="dark" onClick={soloPlay}>혼자두기</Button>
+				</div>
+				<div style={{ marginRight: '5%', float: 'right', width: '15%' }}>
+					<Button variant="dark" onClick={signOut}>로그아웃</Button>
 				</div>
 			</div>
 		</div>

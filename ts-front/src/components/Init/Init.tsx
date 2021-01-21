@@ -90,6 +90,7 @@ const Init = () => {
                   <Form.Control
                     type="password"
                     name="password"
+                    style={{ width: "100%" }}
                     onChange={({ target: { value } }) => setPassword(value)}
                     placeholder="비밀번호를 입력하세요."
                   />
@@ -100,15 +101,14 @@ const Init = () => {
                 로그인하기
               </button>
 
-              <div className="App-wrapper">
-                <p className="forgot-password text-right">
-                  <a>
+              <div className="App-wrapper" style={{width: '100%'}}>
+                <p className="forgot-password text-center">
+                  <Link to='/signup' style={{ textDecoration: 'none', color:'black' }}>
                     회원가입 |{" "}
-                  </a>
+                  </Link>
                   <a>
                     비밀번호 찾기
-                        </a>
-                  <br />
+                  </a>
                 </p>
               </div>
             </form>

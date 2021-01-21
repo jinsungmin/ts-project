@@ -22,7 +22,12 @@ export const changeObject = createStandardAction(CHANGE_OBJECT)<{
     x: number;
     y: number;
     lived: boolean;
+    isMoved: boolean;
+    image: string;
+    name: string;
 }>();
 
 export const toggleObject = createStandardAction(TOGGLE_OBJECT)<number>();
-export const removeObject = createStandardAction(REMOVE_OBJECT)<number>();
+export const removeObject = createStandardAction(REMOVE_OBJECT)<{
+    id: number | undefined;
+}>();

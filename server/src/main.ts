@@ -18,7 +18,7 @@ const io = socketio(server, {
 server.listen(PORT);
 
 const { addUser, removeUser, getUser, users } = require('./users');
-const { addRoom, removeRoom, getRoom, getIndex, removeUserInRoom, rooms } = require('./rooms');
+const { removeRoom, getRoom, getIndex, removeUserInRoom, createRoom, pushUserToRoom, pushID, getUserForSend, leaveRoom, rooms } = require('./rooms');
 
 io.on('connection', (socket) => {
 	socket.on('login', (name, callback) => {
@@ -62,16 +62,65 @@ io.on('connection', (socket) => {
       if(confirm === 'send') {
         io.to(getUser(toUser).id).emit('request', {fromUser: fromUser, confirm: 'receive'});
       } else if(confirm === 'receive'){
-        io.to(getUser(toUser).id).emit('request', {fromUser: fromUser, confirm: 'start'});
+        const room = createRoom();
+
+        pushUserToRoom(fromUser, room);
+        pushUserToRoom(toUser, room);
+
+        console.log('create room:', room);
+        console.log('existed rooms:', rooms);
+
+        io.to(getUser(toUser).id).emit('request', {fromUser: fromUser, confirm: 'start', roomID: room.id});
+        io.to(getUser(fromUser).id).emit('request', {fromUser: toUser, confirm: 'start', roomID: room.id});
+
       }
     } catch (error) {
       return callback(error);
     }
   });
+
+  socket.on('moveObject', ({roomID, username, data, turn}, callback) => {
+    
+    io.to(getUserForSend(roomID, username)).emit('loadMove', {roomID: roomID, username: username, data: data, turn: turn+1});
+  })
+
+  socket.on('roomConnect', ({roomID, username}, callback) => {
+    const count = pushID(roomID, username, socket.id);
+
+    socket.join('room' + roomID);
+
+    console.log('count:', count);
+
+    if(count === 2) {
+      io.to('room' + roomID).emit('match', {roomID: roomID});
+    }
+  })
+
+  socket.on('selectColor', ({roomID, username}) => {
+    const room = getRoom(roomID);
+
+    var rand = Math.floor(Math.random() * 1);
+
+    if(rand) {
+      io.to('room' + roomID).emit('setColor', {black: room.user[1].name, white: room.user[0].name, roomID: roomID})
+    } else {
+      io.to('room' + roomID).emit('setColor', {black: room.user[0].name, white: room.user[1].name, roomID: roomID})
+    }
+  })
+
+  socket.on('removeRoom', ({roomID}) => {
+    leaveRoom(roomID, socket.id);
+
+    console.log('length:', rooms[roomID].user.length)
+    if(!rooms[roomID].user.length) {
+      removeRoom(roomID);
+      console.log('Room', roomID, 'removed!');
+    }
+  })
   
   socket.on('disconnect', () => {
     console.log('disconnected!');
-    
+
     const user = removeUser(socket.id);
     if(user !== -1) {
       socket.emit('sendUser', {users: users});
