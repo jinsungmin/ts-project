@@ -152,36 +152,39 @@ const GameSolo = () => {
 				inPassing = { turn: turn, object: null };
 			}
 
-			if (castling.length) {
-				let check: boolean = true;
-				if (castling[0].name === 'king') {
-					check = window.confirm('캐슬링 하시겠습니까?');
-				}
-
-				if (check) {
-					for (let i = 0; i < castling.length; i++) {
-						if (castling[i].checked) {
-							if (castling[i].color === false) {
-								grid[castling[i].row][castling[i].col].color = 1;
-
-							} else {
-								grid[castling[i].row][castling[i].col].color = -1;
+			if((object.name === 'rook' && ((rowIdx === 0 && colIdx === 5) || (rowIdx === 0 && colIdx === 3) || (rowIdx === 7 && colIdx === 3) || (rowIdx === 7 && colIdx === 5))) ||
+				(object.name === 'king' && ((rowIdx === 0 && colIdx === 6) || (rowIdx === 0 && colIdx === 2) || (rowIdx === 7 && colIdx === 6) || (rowIdx === 7 && colIdx === 2)))) {
+					if (castling.length) {
+						let check: boolean = true;
+						if (castling[0].name === 'king') {
+							check = window.confirm('캐슬링 하시겠습니까?');
+						}
+		
+						if (check) {
+							for (let i = 0; i < castling.length; i++) {
+								if (castling[i].checked) {
+									if (castling[i].color === false) {
+										grid[castling[i].row][castling[i].col].color = 1;
+		
+									} else {
+										grid[castling[i].row][castling[i].col].color = -1;
+									}
+									grid[castling[i].row][castling[i].col].object = false;
+		
+									const tempObject: any = Objects.find((element) => { return element.id === castling[i].id });  // 캐슬링 대상의 기물
+		
+									console.log('log:', castling[i]);
+		
+									grid[tempObject.y][tempObject.x].color = 0;
+									grid[tempObject.y][tempObject.x].object = true;
+		
+									changeObject(castling[i].id, castling[i].col, castling[i].row, true, true, castling[i].image, castling[i].name);
+								}
 							}
-							grid[castling[i].row][castling[i].col].object = false;
-
-							const tempObject: any = Objects.find((element) => { return element.id === castling[i].id });  // 캐슬링 대상의 기물
-
-							console.log('log:', castling[i]);
-
-							grid[tempObject.y][tempObject.x].color = 0;
-							grid[tempObject.y][tempObject.x].object = true;
-
-							changeObject(castling[i].id, castling[i].col, castling[i].row, true, true, castling[i].image, castling[i].name);
 						}
 					}
-				}
 			}
-
+			
 			grid[clicked.row][clicked.col].object = true;
 			grid[clicked.row][clicked.col].color = 0;
 			grid[rowIdx][colIdx].object = false;
@@ -429,31 +432,38 @@ const GameSolo = () => {
 			<div style={{ marginLeft: '5%', marginTop: '5%', float: 'left' }}>
 				{renderBoard()}
 			</div>
-			<div style={{ marginLeft: '5%', marginTop: '5%', float: 'left', width: '30%', textAlign: 'center' }}>
+			<div style={{ marginLeft: '3%', marginTop: '5%', float: 'left', width: '35%', textAlign: 'center' }}>
 				<div style={{ height: '5rem' }}>
 					{turn % 2 === 1 ? <div style={{ fontSize: '1.5rem' }}>BLACK TURN {turn}</div> : <div style={{ fontSize: '1.5rem' }}>WHITE TURN {turn}</div>}
 				</div>
-				<div style={{ textAlign: 'center', fontSize: '1.2rem' }}>
-					Black&nbsp;&nbsp;Dead
+				<div className="row h-100 justify-content-center align-items-center">
+          <div style={{margin: '3%', width: '8rem'}}>
+            <div style={{ textAlign: 'center', fontSize: '1.2rem' }}>
+              Black Dead
+            </div>
+						<br/>
+            <div style={{ textAlign: 'left', height: '5rem', width: '8rem' }}>
+              {Objects.map(object => {
+                if (!object.lived && !object.color) {
+                  return <img src={object.image} style={{ width: '1.5rem', height: '30px', paddingRight: '0.2rem' }} />
+                }
+              })}
+            </div>
+          </div>
+          <div style={{margin: '1rem', width: '8rem'}}>
+            <div style={{ textAlign: 'center', fontSize: '1.2rem'}}>
+              White Dead
+            </div>
+						<br/>
+            <div style={{ textAlign: 'left', height: '5rem', width: '8rem'}}>
+              {Objects.map(object => {
+                if (!object.lived && object.color) {
+                  return <img src={object.image} style={{ width: '1.5rem', height: '30px', paddingRight: '0.2rem' }} />
+                }
+              })}
+            </div>
+          </div>
         </div>
-				<div style={{ textAlign: 'center', height: '5rem' }}>
-
-					{Objects.map(object => {
-						if (!object.lived && !object.color) {
-							return <img src={object.image} style={{ width: '25px', height: '30px', paddingRight: '3px' }} />
-						}
-					})}
-				</div>
-				<div style={{ textAlign: 'center', fontSize: '1.2rem' }}>
-					White Dead
-        </div>
-				<div style={{ textAlign: 'center', height: '5rem' }}>
-					{Objects.map(object => {
-						if (!object.lived && object.color) {
-							return <img src={object.image} style={{ width: '25px', height: '30px', paddingRight: '3px' }} />
-						}
-					})}
-				</div>
 				<div style={{ height: '10rem' }}>
 					<Promotion color={promotionColor} selectPromotion={selectPromotion}/>
 				</div>

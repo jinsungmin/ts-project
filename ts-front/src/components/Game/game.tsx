@@ -596,30 +596,37 @@ const Game = ({ location }: { location: any }) => {
       <div style={{ marginLeft: '5%', marginTop: '5%', float: 'left' }}>
         {renderBoard()}
       </div>
-      <div style={{ marginLeft: '5%', marginTop: '5%', float: 'left', width: '30%', textAlign: 'center' }}>
+      <div style={{ marginLeft: '3%', marginTop: '5%', float: 'left', width: '35%', textAlign: 'center' }}>
         <div style={{ height: '5rem' }}>
           {turn % 2 === 1 ? <div style={{ fontSize: '1.5rem' }}>BLACK TURN {turn}</div> : <div style={{ fontSize: '1.5rem' }}>WHITE TURN {turn}</div>}
         </div>
-        <div style={{ textAlign: 'center', fontSize: '1.2rem' }}>
-          Black&nbsp;&nbsp;Dead
-        </div>
-        <div style={{ textAlign: 'center', height: '5rem' }}>
-
-          {Objects.map(object => {
-            if (!object.lived && !object.color) {
-              return <img src={object.image} style={{ width: '25px', height: '30px', paddingRight: '3px' }} />
-            }
-          })}
-        </div>
-        <div style={{ textAlign: 'center', fontSize: '1.2rem' }}>
-          White Dead
-        </div>
-        <div style={{ textAlign: 'center', height: '5rem' }}>
-          {Objects.map(object => {
-            if (!object.lived && object.color) {
-              return <img src={object.image} style={{ width: '25px', height: '30px', paddingRight: '3px' }} />
-            }
-          })}
+        <div className="row h-100 justify-content-center align-items-center">
+          <div style={{margin: '3%', width: '8rem'}}>
+            <div style={{ textAlign: 'center', fontSize: '1.2rem' }}>
+              Black Dead
+            </div>
+						<br/>
+            <div style={{ textAlign: 'left', height: '5rem', width: '8rem' }}>
+              {Objects.map(object => {
+                if (!object.lived && !object.color) {
+                  return <img src={object.image} style={{ width: '1.5rem', height: '30px', paddingRight: '0.2rem' }} />
+                }
+              })}
+            </div>
+          </div>
+          <div style={{margin: '1rem', width: '8rem'}}>
+            <div style={{ textAlign: 'center', fontSize: '1.2rem'}}>
+              White Dead
+            </div>
+						<br/>
+            <div style={{ textAlign: 'left', height: '5rem', width: '8rem'}}>
+              {Objects.map(object => {
+                if (!object.lived && object.color) {
+                  return <img src={object.image} style={{ width: '1.5rem', height: '30px', paddingRight: '0.2rem' }} />
+                }
+              })}
+            </div>
+          </div>
         </div>
         <div style={{ height: '10rem' }}>
           {type === promotionColor ? <Promotion color={promotionColor} selectPromotion={selectPromotion} /> :

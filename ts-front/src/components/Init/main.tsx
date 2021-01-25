@@ -13,8 +13,9 @@ import { useCookies } from "react-cookie";
 import queryString from 'query-string';
 import io from 'socket.io-client';
 
-import { Button } from 'react-bootstrap';
+import { Button, Image } from 'react-bootstrap';
 
+import refresh_button from '../../images/refresh_button.png';
 import { ContextMenu, MenuItem, ContextMenuTrigger } from "react-contextmenu";
 
 const ENDPOINT = 'localhost:8080';
@@ -135,7 +136,6 @@ const Main = ({ location }: { location: any }) => {
 			}
 		} else if (confirm.type === 'start') {
 			history.push(`/game?roomID=${confirm.roomID}&username=${confirm.username}`);
-			//window.location.assign(`/game?roomID=${confirm.roomID}&username=${confirm.username}`);
 		}
 	}, [confirm]);
 
@@ -176,12 +176,17 @@ const Main = ({ location }: { location: any }) => {
 				</ul>
 			</div>
 			<div style={{ marginTop: '5%', width: '16%', height: '8rem', float: 'left', borderTop: '2px solid black', borderRight: '2px solid black', borderBottom: '2px solid black', textAlign: 'center' }}>
-				{User.length && <div>
+				{User.length ? <div>
 					<div>{User[0].username}</div>
 					<div>Win: {User[0].win}</div>
 					<div>Lose: {User[0].lose}</div>
-				</div>
+				</div> : <div></div>
 				}
+				
+				<Button style={{backgroundColor: 'white', border: 0, float: 'right', marginRight: '1rem'}}>
+					<Image onClick={() => window.location.reload()}src={refresh_button} style={{width:'1.5rem', height: '1.5rem'}}/>
+				</Button>
+				
 			</div>
 			<div style={{ width: '16%', height: '24rem', float: 'left', borderRight: '2px solid black', borderBottom: '2px solid black', textAlign: 'center' }}>
 				<ul className="list-group" style={{ overflow: 'auto' }}>
