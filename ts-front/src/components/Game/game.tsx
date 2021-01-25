@@ -8,7 +8,10 @@ import queryString from 'query-string';
 
 import {
   Button,
+  Image
 } from "react-bootstrap";
+
+import lodash from 'lodash';
 
 import useObjects from '../../hooks/useObjects';
 import useAddObject from '../../hooks/useAddObject';
@@ -33,6 +36,9 @@ import useRemoveObject from '../../hooks/useRemoveObject';
 import useAddUser from '../../hooks/useAddUser';
 import { isNotEmittedStatement } from 'typescript';
 
+import Promotion from './promotion';
+const { rootPawn, rootKnight, rootFromDir, rootKing, checkCastling, rootInPassing } = require('./rootFinding');
+
 const CELL_SIZE = 60;
 const BOARD_SIZE = 8;
 const boardWidth = CELL_SIZE * BOARD_SIZE;
@@ -41,7 +47,7 @@ let socket: any;
 
 let grid = Array.apply(null, Array(BOARD_SIZE)).map((el, idx) => {
   return Array.apply(null, Array(BOARD_SIZE)).map((el, idx) => {
-    return { click: 0, object: true, root: false, color: 0 }
+    return { click: 0, object: true, root: false, color: 0, image: '', status: '' }
   });
 });
 
@@ -56,6 +62,9 @@ for (var i = 0; i < BOARD_SIZE; i++) {
   grid[6][i].color = -1;
   grid[7][i].color = -1;
 }
+
+let castling: any = [];
+let inPassing: any = null;
 
 const Game = ({ location }: { location: any }) => {
   const User = useUser();
@@ -76,7 +85,8 @@ const Game = ({ location }: { location: any }) => {
   const [take, setTake] = useState(false);
   const [type, setType] = useState('');
 
-  const [dataIO, setDataIO] = useState(null);
+  const [promotionColor, setPromotionColor] = useState('');
+  const [promotionMessage, setPromotionMessage] = useState('');
 
   let history = useHistory();
 
@@ -107,7 +117,6 @@ const Game = ({ location }: { location: any }) => {
         addObject('pawn', i, 6, white_pawn, true);
       }
     }
-    console.log('user:', User);
     console.log('reload');
 
     const { roomID, username } = queryString.parse(location.search);
@@ -129,28 +138,14 @@ const Game = ({ location }: { location: any }) => {
     }
   }, [ENDPOINT, location.search]);
 
-  /*
   useEffect(() => {
-    //console.log(location.search);
-    const { roomID, username } = queryString.parse(location.search);
-
-    if (typeof (roomID) === 'string' && typeof (username) === 'string') {
-      setRoomID(roomID);
-      setUsername(username);
+    if (turn > 1) {
+      judgeGame();
+      judgeCheck();
+      judgePromotion();
     }
+  }, [turn]);
 
-    socket = io(ENDPOINT);
-
-    socket.emit('roomConnect', { roomID: roomID, username: User[0].username }, () => {
-      setConnected(!connected);
-    });
-
-    return () => {
-      socket.emit('removeRoom', { roomID: roomID });
-      socket.off();
-    }
-  }, [ENDPOINT, location.search]);
-  */
   useEffect(() => {
     socket.on('match', ({ roomID }: any) => {
       setRoomID(roomID);
@@ -176,38 +171,50 @@ const Game = ({ location }: { location: any }) => {
           //setUsername(res.data.user.username);
         })
         .catch((error) => {
-          alert('error');
+          alert(error.response.data.message);
         });
     })
   }, [take]);
 
   // 상대방의 움직임 반영
   useEffect(() => {
+    socket.on('breakOut', ({ roomID }: any) => {
+      alert('상대방이 기권하여 승리하였습니다.');
+      setPromotionColor('gameSet');
+    })
     socket.on('loadMove', ({ roomID, username, data, turn }: any) => {
-      //setDataIO(data);
+
+      if (data.grid) {
+        grid = data.grid;
+        setBoard([...grid]);
+      } else if (data.board) {
+        grid = data.board;
+        setBoard([...grid]);
+      }
 
       // 상대방의 움직임에 따른 보드 변화
-      grid = data.grid;
+      if (data.inPassing) {
+        console.log('inPassing:', data.inPassing);
 
-      console.log('type:', type, 'turn:', turn, data);
+        inPassing = data.inPassing;
+      }
 
-      setBoard([...grid]);
-      setTurn(turn);
+      setPromotionColor('');
+      setPromotionMessage('');
+
       for (let i = 0; i < data.object.length; i++) {
         changeObject(data.object[i].id, data.object[i].row, data.object[i].col, data.object[i].lived, data.object[i].isMoved, data.object[i].image, data.object[i].name);
-        if(!data.object[i].lived && data.object[i].object === 'king') {
-          alert('game set');
-        }
+      }
+
+      if (data.grid) {
+        setTurn(turn);
+      } else if (data.board) {
+        setTurn(turn - 1);
       }
     });
   }, [move]);
 
-  const isInside = (row: number, col: number) => {
-    return row >= 0 && row < BOARD_SIZE && col >= 0 && col < BOARD_SIZE;
-  }
-
   const clickControl = (rowIdx: number, colIdx: number) => {
-    console.log('click:', rowIdx, colIdx);
     let grid = board;
 
     init(grid, 'click', 0);
@@ -224,13 +231,66 @@ const Game = ({ location }: { location: any }) => {
       if (destObject) {
         objectName = destObject.name;
         changeObject(destObject.id, colIdx, rowIdx, false, true, destObject.image, destObject.name);
-        objectChange.push({ id: destObject.id, row: colIdx, col: rowIdx, lived: false, isMoved: true, object: objectName });
+        objectChange.push({ id: destObject.id, row: colIdx, col: rowIdx, lived: false, isMoved: true, object: objectName, image: destObject.image, name: destObject.name });
+      }
+
+      if (grid[clicked.row][colIdx].status === 'inPassing') {
+        const inPassingObject: any = Objects.find((element) => { return element.y === clicked.row && element.x === inPassing.object.x && element.lived });  // 인파상으로 제거되는 기물
+
+        if (inPassingObject) {
+          changeObject(inPassingObject.id, null, null, false, true, inPassingObject.image, inPassingObject.name);
+          objectChange.push({ id: inPassingObject.id, row: null, col: null, lived: false, isMoved: true, object: inPassingObject.name, image: inPassingObject.image, name: inPassingObject.name });
+
+          grid[clicked.row][inPassing.object.x].object = true;
+          grid[clicked.row][inPassing.object.x].root = false;
+          grid[clicked.row][inPassing.object.x].image = '';
+
+          //grid[clicked.row][colIdx].status = '';
+          init(grid, 'status', '');
+        }
+      }
+
+      if (object.name === 'pawn') {
+        inPassing = { turn: turn, object: object };
+      } else {
+        inPassing = { turn: turn, object: null };
       }
 
       changeObject(object.id, colIdx, rowIdx, true, true, object.image, object.name);
-      objectChange.push({ id: object.id, row: colIdx, col: rowIdx, lived: true, isMoved: true, object: objectName });
+      objectChange.push({ id: object.id, row: colIdx, col: rowIdx, lived: true, isMoved: true, object: objectName, image: object.image, name: object.name });
+
+      if (castling.length) {
+        let check: boolean = true;
+        if (castling[0].name === 'king') {
+          check = window.confirm('캐슬링 하시겠습니까?');
+        }
+        if (check) {
+          for (let i = 0; i < castling.length; i++) {
+            if (castling[i].checked) {
+              if (castling[i].color === false) {
+                grid[castling[i].row][castling[i].col].color = 1;
+
+              } else {
+                grid[castling[i].row][castling[i].col].color = -1;
+              }
+              grid[castling[i].row][castling[i].col].object = false;
+
+              const tempObject: any = Objects.find((element) => { return element.id === castling[i].id });  // 캐슬링 대상의 기물
+
+              console.log('log:', castling[i]);
+
+              grid[tempObject.y][tempObject.x].color = 0;
+              grid[tempObject.y][tempObject.x].object = true;
+
+              changeObject(castling[i].id, castling[i].col, castling[i].row, true, true, castling[i].image, castling[i].name);
+              objectChange.push({ id: castling[i].id, row: castling[i].col, col: castling[i].row, lived: true, isMoved: true, object: castling[i].name, image: castling[i].image, name: castling[i].name });
+            }
+          }
+        }
+      }
 
       grid[clicked.row][clicked.col].object = true;
+      grid[clicked.row][clicked.col].color = 0;
       grid[rowIdx][colIdx].object = false;
 
       if (!object.color) {
@@ -239,17 +299,15 @@ const Game = ({ location }: { location: any }) => {
         grid[rowIdx][colIdx].color = -1;
       }
 
-      if (objectName === 'king') {
-        console.log('game set');
-      }
-      //setTurn(turn + 1);
-
       init(grid, 'root', false);
 
       let data = {
         grid: grid,
         object: objectChange,
+        inPassing: inPassing,
       };
+
+      setTurn(turn + 1);
 
       socket.emit('moveObject', { roomID: roomID, username: username, data: data, turn: turn }, () => {
         setMove(!move);
@@ -257,14 +315,10 @@ const Game = ({ location }: { location: any }) => {
     } else {
       grid[rowIdx][colIdx].click++;
 
-      setBoard([...grid]);
-
       const object = Objects.find((element) => { return element.y === rowIdx && element.x === colIdx && element.lived });
 
-      console.log(object);
-
       setClicked({ row: rowIdx, col: colIdx });
-      searchRoot(object);
+      searchRoot(object, 'searchRoot');
     }
   }
 
@@ -278,10 +332,23 @@ const Game = ({ location }: { location: any }) => {
     }
   }
 
-  const searchRoot = (object: any) => {
-    let grid = board;
+  const judgePromotion = () => {
+    const object = Objects.find((element) => { return (element.y === 0 || element.y === 7) && element.name === 'pawn' && element.lived });
+    if (object) {
+      if (!object.color) {
+        setPromotionMessage('흑 승급');
+        setPromotionColor('black');
+      } else {
+        setPromotionMessage('백 승급');
+        setPromotionColor('white');
+      }
+    }
+  }
 
-    init(grid, 'root', false);
+  const searchRoot = (object: any, type: any) => {
+    let searchBoard = lodash.cloneDeep(board);
+
+    init(searchBoard, 'root', false);
 
     let color: number = 0;
     let initPos = 0;
@@ -296,109 +363,134 @@ const Game = ({ location }: { location: any }) => {
 
     switch (object.name) {
       case 'pawn':
-        if (object.y == initPos + 1 * color) {
-          if (grid[object.y + 2 * color][object.x].object && grid[object.y + 1 * color][object.x].object)
-            grid[object.y + 2 * color][object.x].root = true;
-        }
-        if (isInside(object.y + 1 * color, object.x + 1) && !grid[object.y + 1 * color][object.x + 1].object && grid[object.y + 1 * color][object.x + 1].color === -1 * color) {
-          grid[object.y + 1 * color][object.x + 1].root = true;
-        }
-        if (isInside(object.y + 1 * color, object.x - 1) && !grid[object.y + 1 * color][object.x - 1].object && grid[object.y + 1 * color][object.x - 1].color === -1 * color) {
-          grid[object.y + 1 * color][object.x - 1].root = true;
-        }
+        searchBoard = rootPawn(object, initPos, color, searchBoard, type);
+        if (type === 'searchRoot')
+          searchBoard = rootInPassing(object, searchBoard, inPassing);
 
-        if (isInside(object.y + 1 * color, object.x) && grid[object.y + 1 * color][object.x].object)
-          grid[object.y + 1 * color][object.x].root = true;
-        // 앙파상, 승진 구현
-
-        setBoard([...grid]);
-
-        console.log('board:', board);
         break;
       case 'knight':
-        let dir_first = [[-1, 0], [0, 1], [1, 0], [0, -1]];
-        let dir_second = [[-1, -1], [-1, 1], [1, 1], [1, -1]];
+        searchBoard = rootKnight(object, color, searchBoard);
 
-        for (var i = 0; i < dir_first.length; i++) {
-          for (var cnt: number = 0; cnt < 2; cnt++) {
-            var j: number = i + cnt;
-            if (j === 4) {
-              j -= 4;
-            }
-
-            if (isInside(object.y + dir_first[i][0] + dir_second[j][0], object.x + dir_first[i][1] + dir_second[j][1])) {
-              if (!grid[object.y + dir_first[i][0] + dir_second[j][0]][object.x + dir_first[i][1] + dir_second[j][1]].object) {
-                if (grid[object.y + dir_first[i][0] + dir_second[j][0]][object.x + dir_first[i][1] + dir_second[j][1]].color === -1 * color) {
-                  grid[object.y + dir_first[i][0] + dir_second[j][0]][object.x + dir_first[i][1] + dir_second[j][1]].root = true;
-                }
-              } else {
-                grid[object.y + dir_first[i][0] + dir_second[j][0]][object.x + dir_first[i][1] + dir_second[j][1]].root = true;
-              }
-            }
-
-          }
-        }
-        setBoard([...grid]);
         break;
       case 'rook':
         dir = [[-1, 0], [1, 0], [0, 1], [0, -1]];
-        rootFromDir(dir, object, color);
-
-        // 캐슬링 구현
+        searchBoard = rootFromDir(dir, object, color, searchBoard);
+        searchBoard = checkCastling(object, Objects, searchBoard, castling);
 
         break;
       case 'bishop':
         dir = [[-1, -1], [1, 1], [-1, 1], [1, -1]];
-        rootFromDir(dir, object, color);
+        searchBoard = rootFromDir(dir, object, color, searchBoard);
+
         break;
       case 'king':
         dir = [[-1, -1], [1, 1], [-1, 1], [1, -1], [-1, 0], [1, 0], [0, 1], [0, -1]];
+        searchBoard = rootKing(dir, object, color, searchBoard);
+        searchBoard = checkCastling(object, Objects, searchBoard, castling);
 
-        for (var i = 0; i < dir.length; i++) {
-          if (isInside(object.y + dir[i][0], object.x + dir[i][1])) {
-            if (!grid[object.y + dir[i][0]][object.x + dir[i][1]].object) {
-              if (grid[object.y + dir[i][0]][object.x + dir[i][1]].color === -1 * color) {
-                grid[object.y + dir[i][0]][object.x + dir[i][1]].root = true;
-              }
-            } else {
-              grid[object.y + dir[i][0]][object.x + dir[i][1]].root = true;
-            }
-          }
-        }
-
-        // 캐슬링 구현
-
-        setBoard([...grid]);
         break;
       case 'queen':
         dir = [[-1, -1], [1, 1], [-1, 1], [1, -1], [-1, 0], [1, 0], [0, 1], [0, -1]];
-        rootFromDir(dir, object, color);
+        searchBoard = rootFromDir(dir, object, color, searchBoard);
+
         break;
       default:
         break;
     }
+
+    if (type === 'searchRoot') {
+      setBoard([...searchBoard]);
+      return null;
+    } else if (type === 'judgeCheck') {
+      return searchBoard;
+    }
   }
 
-  const rootFromDir = (dir: any, object: any, color: number) => {
-    for (var i = 0; i < dir.length; i++) {
-      var cnt = 1;
-      while (isInside(object.y + dir[i][0] * cnt, object.x + dir[i][1] * cnt)) {
-        // 기물이 존재하고 같은 색일때,
-        if (!grid[object.y + dir[i][0] * cnt][object.x + dir[i][1] * cnt].object) {
-          if (grid[object.y + dir[i][0] * cnt][object.x + dir[i][1] * cnt].color === color) {
-            break;
-          }
-          if (grid[object.y + dir[i][0] * cnt][object.x + dir[i][1] * cnt].color === -1 * color) {
-            grid[object.y + dir[i][0] * cnt][object.x + dir[i][1] * cnt].root = true;
-            break;
-          }
+  const judgeGame = async () => {
+    const deadKing: any = Objects.find((element) => { return element.name === 'king' && !element.lived });
+
+    if (deadKing) {
+      if (!deadKing.color) { // 블랙
+        alert('백 승');
+        setPromotionColor('gameSet');
+        let winner: boolean;
+        if (type === 'white') {
+          winner = true;
         } else {
-          grid[object.y + dir[i][0] * cnt][object.x + dir[i][1] * cnt].root = true;
+          winner = false;
         }
-        cnt++;
+        socket.emit('gameSet', { roomID: roomID, winner: winner, opponent: null }, () => {
+        })
+      } else {
+        alert('흑 승');
+        let winner: boolean;
+        if (type === 'black') {
+          winner = true;
+        } else {
+          winner = false;
+        }
+        socket.emit('gameSet', { roomID: roomID, winner: winner, opponent: null }, () => {
+        })
+        setPromotionColor('gameSet');
       }
     }
-    setBoard([...grid]);
+  }
+
+  // 본인의 턴에 체크 상태인지 확인하는 함수
+  const judgeCheck = async () => {
+    let checkBoard = Array.apply(null, Array(BOARD_SIZE)).map((el, idx) => {
+
+      return Array.apply(null, Array(BOARD_SIZE)).map((el, idx) => {
+        return { root: false }
+      });
+    });
+
+    const king: any = Objects.find((element) => { return element.name === 'king' && turn % 2 === 1 ? element.color === false : element.color === true });
+
+    const objects: any = Objects.filter(element => turn % 2 === 1 ? element.color === true && element.lived : element.color === false && element.lived);
+
+    await objects.map(async (element: any) => {
+      console.log(element);
+      let tBoard: any = await searchRoot(element, 'judgeCheck');
+      for (let i = 0; i < 8; i++) {
+        for (let j = 0; j < 8; j++) {
+          if (tBoard[i][j].root) {
+            checkBoard[i][j].root = true;
+          }
+        }
+      }
+    })
+    if (checkBoard[king.y][king.x].root) {
+      alert('check!');
+    }
+  }
+
+  const selectPromotion = (object: any): void => {
+    const pawn: any = Objects.find((element) => { return (element.y === 0 || element.y === 7) && element.name === 'pawn' && element.lived });
+    let objectChange = [];
+
+    changeObject(pawn.id, pawn.x, pawn.y, true, true, object.image, object.name);
+    objectChange.push({ id: pawn.id, row: pawn.y, col: pawn.x, lived: true, isMoved: true, object: object.name, image: object.image, name: object.name });
+
+    let data = {
+      object: objectChange,
+      board: board,
+    }
+
+    setPromotionColor('');
+    setPromotionMessage('');
+
+    socket.emit('moveObject', { roomID: roomID, username: username, data: data, turn: turn }, () => {
+      setMove(!move);
+    })
+  }
+
+  const selectImage = (object: any, rowIdx: number, colIdx: number) => {
+    if (object) {
+      return object.image;
+    } else {
+      return board[rowIdx][colIdx].image;
+    }
   }
 
   const checkDisabled = (rowIdx: number, colIdx: number) => {
@@ -432,36 +524,28 @@ const Game = ({ location }: { location: any }) => {
     }
   }
 
-  const initState = () => {
-    grid = Array.apply(null, Array(BOARD_SIZE)).map((el, idx) => {
-      return Array.apply(null, Array(BOARD_SIZE)).map((el, idx) => {
-        return { click: 0, object: true, root: false, color: 0 }
-      });
-    });
-    
-    for (var i = 0; i < BOARD_SIZE; i++) {
-      grid[0][i].object = false;
-      grid[1][i].object = false;
-      grid[6][i].object = false;
-      grid[7][i].object = false;
-    
-      grid[0][i].color = 1;
-      grid[1][i].color = 1;
-      grid[6][i].color = -1;
-      grid[7][i].color = -1;
-    }
-    setBoard(grid);
-    setTurn(1);
-  }
-
   const backToHome = () => {
-    Objects.map(object => {
-      removeObject(object.id);
-    })
+    let check: boolean;
+    if (promotionColor === 'gameSet') {
+      check = window.confirm('방을 나가시겠습니까?');
+    } else {
+      check = window.confirm('방을 나가시겠습니까? 기권 처리됩니다.');
+    }
 
-    //initState();
-    history.push('/home');
-    window.location.reload();
+    if (check) {
+      if (promotionColor !== 'gameSet') {
+        socket.emit('gameSet', { roomID: roomID, winner: false, opponent: username }, () => {
+          setMove(!move);
+        })
+      }
+
+      Objects.map(object => {
+        removeObject(object.id);
+      })
+
+      history.push('/home');
+      window.location.reload();
+    }
   }
 
   const renderBoard = () => {
@@ -469,18 +553,23 @@ const Game = ({ location }: { location: any }) => {
       let cellList = Array.apply(null, Array(BOARD_SIZE)).map((el, colIdx) => {
         return (
           <div>
-            {(rowIdx + colIdx) % 2 === 0 ? <button onClick={() => clickControl(rowIdx, colIdx)} disabled={checkDisabled(rowIdx, colIdx)} style={{ width: CELL_SIZE, height: CELL_SIZE, backgroundColor: checkColor('#996600', rowIdx, colIdx), border: '1px solid black' }}>
-              {Objects.map((object, index)=> {
-                if (object.x === colIdx && object.y === rowIdx && object.lived)
-                  return <img key={index} src={object.image} style={{ width: CELL_SIZE - 10, height: CELL_SIZE - 10, paddingRight: '3px' }} />
+            {(rowIdx + colIdx) % 2 === 0 ? <button onClick={() => clickControl(rowIdx, colIdx)} disabled={promotionColor !== '' || checkDisabled(rowIdx, colIdx)} style={{ width: CELL_SIZE, height: CELL_SIZE, backgroundColor: checkColor('#996600', rowIdx, colIdx), border: '1px solid black' }}>
+              {Objects.map(object => { // 오브젝트 32개 탐색
+                if (object.x === colIdx && object.y === rowIdx && object.lived) {
+                  return <Image src={selectImage(object, rowIdx, colIdx)} style={{ width: CELL_SIZE - 10, height: CELL_SIZE - 10, paddingRight: '3px' }} />
+                }
               })}
+              {checkColor('#ffcc66', rowIdx, colIdx) === '#cccccc' && board[rowIdx][colIdx].object &&
+                <Image src={selectImage(null, rowIdx, colIdx)} style={{ width: CELL_SIZE - 10, height: CELL_SIZE - 10, paddingRight: '3px', opacity: '30%' }} />}
             </button> :
-              <button onClick={() => clickControl(rowIdx, colIdx)} disabled={checkDisabled(rowIdx, colIdx)} style={{ width: CELL_SIZE, height: CELL_SIZE, backgroundColor: checkColor('#ffcc66', rowIdx, colIdx), border: '1px solid black' }}>
-                {Objects.map((object, index) => {
+              <button onClick={() => clickControl(rowIdx, colIdx)} disabled={promotionColor !== '' || checkDisabled(rowIdx, colIdx)} style={{ width: CELL_SIZE, height: CELL_SIZE, backgroundColor: checkColor('#ffcc66', rowIdx, colIdx), border: '1px solid black' }}>
+                {Objects.map(object => { // 오브젝트 32개 탐색
                   if (object.x === colIdx && object.y === rowIdx && object.lived) {
-                    return <img key={index} src={object.image} style={{ width: CELL_SIZE - 10, height: CELL_SIZE - 10, paddingRight: '3px' }} />
+                    return <Image src={selectImage(object, rowIdx, colIdx)} style={{ width: CELL_SIZE - 10, height: CELL_SIZE - 10, paddingRight: '3px' }} />
                   }
                 })}
+                {checkColor('#996600', rowIdx, colIdx) === '#cccccc' && board[rowIdx][colIdx].object &&
+                  <Image src={selectImage(null, rowIdx, colIdx)} style={{ width: CELL_SIZE - 10, height: CELL_SIZE - 10, paddingRight: '3px', opacity: '30%' }} />}
               </button>
             }
           </div>
@@ -504,34 +593,37 @@ const Game = ({ location }: { location: any }) => {
 
   return (
     <div>
-
       <div style={{ marginLeft: '5%', marginTop: '5%', float: 'left' }}>
         {renderBoard()}
       </div>
       <div style={{ marginLeft: '5%', marginTop: '5%', float: 'left', width: '30%', textAlign: 'center' }}>
-        <div >
+        <div style={{ height: '5rem' }}>
           {turn % 2 === 1 ? <div style={{ fontSize: '1.5rem' }}>BLACK TURN {turn}</div> : <div style={{ fontSize: '1.5rem' }}>WHITE TURN {turn}</div>}
         </div>
-        <div style={{ textAlign: 'left', fontSize: '1.2rem' }}>
+        <div style={{ textAlign: 'center', fontSize: '1.2rem' }}>
           Black&nbsp;&nbsp;Dead
         </div>
-        <div style={{ textAlign: 'left' }}>
+        <div style={{ textAlign: 'center', height: '5rem' }}>
 
-          {Objects.map((object, index) => {
+          {Objects.map(object => {
             if (!object.lived && !object.color) {
-              return <img key={index} src={object.image} style={{ width: '25px', height: '30px', paddingRight: '3px' }} />
+              return <img src={object.image} style={{ width: '25px', height: '30px', paddingRight: '3px' }} />
             }
           })}
         </div>
-        <div style={{ textAlign: 'left', fontSize: '1.2rem' }}>
+        <div style={{ textAlign: 'center', fontSize: '1.2rem' }}>
           White Dead
         </div>
-        <div style={{ textAlign: 'left' }}>
-          {Objects.map((object, index) => {
+        <div style={{ textAlign: 'center', height: '5rem' }}>
+          {Objects.map(object => {
             if (!object.lived && object.color) {
-              return <img key={index} src={object.image} style={{ width: '25px', height: '30px', paddingRight: '3px' }} />
-            } 
+              return <img src={object.image} style={{ width: '25px', height: '30px', paddingRight: '3px' }} />
+            }
           })}
+        </div>
+        <div style={{ height: '10rem' }}>
+          {type === promotionColor ? <Promotion color={promotionColor} selectPromotion={selectPromotion} /> :
+            promotionMessage}
         </div>
         <div>
           <Button variant="dark" onClick={backToHome}>뒤로 가기</Button>

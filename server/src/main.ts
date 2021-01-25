@@ -17,8 +17,9 @@ const io = socketio(server, {
 
 server.listen(PORT);
 
+const { reflectGameResult } = require('./routes/middlewares.ts');
 const { addUser, removeUser, getUser, users } = require('./users');
-const { removeRoom, getRoom, getIndex, removeUserInRoom, createRoom, pushUserToRoom, pushID, getUserForSend, leaveRoom, rooms } = require('./rooms');
+const { removeRoom, getRoom, getIndex, removeUserInRoom, createRoom, pushUserToRoom, pushID, getUserForSend, leaveRoom, getUserInRoom, rooms } = require('./rooms');
 
 io.on('connection', (socket) => {
 	socket.on('login', (name, callback) => {
@@ -82,6 +83,25 @@ io.on('connection', (socket) => {
   socket.on('moveObject', ({roomID, username, data, turn}, callback) => {
     
     io.to(getUserForSend(roomID, username)).emit('loadMove', {roomID: roomID, username: username, data: data, turn: turn+1});
+  })
+
+  socket.on('gameSet', ({roomID, winner, opponent}, callback) => {
+    const user = getUserInRoom(roomID, socket.id);
+
+    if(winner) {
+      // 승수 추가
+      console.log('winner:', user);
+      reflectGameResult(user, true);
+    } else {
+      console.log('loser:', user);
+      reflectGameResult(user, false);
+    }
+
+    if(opponent) {
+      console.log('winner:', opponent);
+      reflectGameResult(opponent, true);
+      io.to(getUserForSend(roomID, opponent)).emit('breakOut', {roomID: roomID });
+    }
   })
 
   socket.on('roomConnect', ({roomID, username}, callback) => {

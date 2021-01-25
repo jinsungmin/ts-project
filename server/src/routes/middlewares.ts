@@ -199,11 +199,31 @@ const generateRefreshToken = function (req, uid) {
 	return refresh_token;
 };
 
+const reflectGameResult = async (username, game_result) => {
+  //let { username, game_result } = req.body;
+
+  try {
+    const user = await UserModel.findOne({ 'username': username });
+
+    console.log('test:', user);
+    
+    if(game_result) {
+      await user.updateOne({win: user.win +1}, {'username': username }).exec();
+    } else {
+      await user.updateOne({lose: user.lose +1}, {'username': username }).exec();
+    }
+    
+  } catch (error) {
+    console.error(error);
+  }
+}
+
 module.exports = {
 	isJustLoggedIn,
 	isNotLoggedIn,
 	validateJwt,
 	generateRefreshToken,
 	getLoggedInUserInfo,
-	getLoggedInUserId
+  getLoggedInUserId,
+  reflectGameResult,
 };

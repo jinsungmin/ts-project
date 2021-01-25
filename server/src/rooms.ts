@@ -24,6 +24,12 @@ const removeUserInRoom = (name) => {
   return -1;
 }
 
+const getUserInRoom = (roomID, userID) => {
+  const index = rooms[roomID].user.findIndex((obj) => obj.id === userID);
+
+  return rooms[roomID].user[index].name;
+}
+
 const getUserForSend = (roomID, username) => {
   const index = rooms[roomID].user.findIndex((obj) => obj.name === username);
 
@@ -77,4 +83,4 @@ const getIndex = (id) => {
 
 //const getUsersInRoom = (room) => users.filter((user) => user.room === room);
 
-module.exports = { removeRoom, leaveRoom, getRoom, getIndex,removeUserInRoom, createRoom, pushUserToRoom, pushID, getUserForSend, rooms }
+module.exports = { removeRoom, leaveRoom, getRoom, getIndex,removeUserInRoom, createRoom, pushUserToRoom, pushID, getUserForSend, getUserInRoom, rooms }

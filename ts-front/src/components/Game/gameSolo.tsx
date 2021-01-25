@@ -152,7 +152,6 @@ const GameSolo = () => {
 				inPassing = { turn: turn, object: null };
 			}
 
-
 			if (castling.length) {
 				let check: boolean = true;
 				if (castling[0].name === 'king') {
@@ -306,8 +305,6 @@ const GameSolo = () => {
 	// 본인의 턴에 체크 상태인지 확인하는 함수
 	const judgeCheck = async () => {
 		let checkBoard = Array.apply(null, Array(BOARD_SIZE)).map((el, idx) => {
-
-
 			return Array.apply(null, Array(BOARD_SIZE)).map((el, idx) => {
 				return { root: false }
 			});
@@ -365,11 +362,10 @@ const GameSolo = () => {
 		})
 
 		history.push('/home');
+		window.location.reload();
 	}
 
 	const selectPromotion = (object: any): void => {
-		//console.log('select image:', object);
-
 		const pawn: any = Objects.find((element) => { return (element.y === 0 || element.y === 7) && element.name === 'pawn' && element.lived });
 		
 		changeObject(pawn.id, pawn.x, pawn.y, true, true, object.image, object.name);

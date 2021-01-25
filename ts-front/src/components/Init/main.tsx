@@ -158,6 +158,9 @@ const Main = ({ location }: { location: any }) => {
       })
       .catch((error) => {
 				alert(error.response.data.message);
+				history.push('/');
+
+				window.location.reload();
       });
   };
 

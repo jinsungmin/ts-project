@@ -107,7 +107,7 @@ const checkCastling = (object: any, Objects: any, grid: any, castling: any) => {
 							return grid;
 						}
 					}
-					castling.push({ checked: true, id: king.id, name: 'king', row: 0, col: 2, color: object.color });
+					castling.push({ checked: true, id: king.id, name: 'king', row: 0, col: 2, color: object.color, image: king.image });
 					return grid;
 				} else {
 					for (let i = 1; i < 3; i++) {
@@ -116,7 +116,7 @@ const checkCastling = (object: any, Objects: any, grid: any, castling: any) => {
 							return grid;
 						}
 					}
-					castling.push({ checked: true, id: king.id, name: 'king', row: 0, col: 6, color: object.color });
+					castling.push({ checked: true, id: king.id, name: 'king', row: 0, col: 6, color: object.color, image: king.image });
 					return grid;
 				}
 			}
@@ -130,7 +130,7 @@ const checkCastling = (object: any, Objects: any, grid: any, castling: any) => {
 							return grid;
 						}
 					}
-					castling.push({ checked: true, id: king.id, name: 'king', row: 7, col: 2, color: object.color });
+					castling.push({ checked: true, id: king.id, name: 'king', row: 7, col: 2, color: object.color, image: king.image });
 					return grid;
 				} else {
 					for (let i = 1; i < 3; i++) {
@@ -139,7 +139,7 @@ const checkCastling = (object: any, Objects: any, grid: any, castling: any) => {
 							return grid;
 						}
 					}
-					castling.push({ checked: true, id: king.id, name: 'king', row: 7, col: 6, color: object.color });
+					castling.push({ checked: true, id: king.id, name: 'king', row: 7, col: 6, color: object.color, image: king.image });
 
 					return grid;
 				}
@@ -159,7 +159,7 @@ const checkCastling = (object: any, Objects: any, grid: any, castling: any) => {
 				if (isBlanked) {
 					grid[object.y][object.x + 2].root = true;
 					grid[object.y][object.x + 2].image = object.image;
-					castling.push({ checked: true, id: rook[i].id, name: 'rook', row: object.y, col: object.x + 1, color: object.color });
+					castling.push({ checked: true, id: rook[i].id, name: 'rook', row: object.y, col: object.x + 1, color: object.color, image: rook[i].image });
 				}
 			} else if (rook[i].x === 0) {
 				let isBlanked = true;
@@ -172,7 +172,7 @@ const checkCastling = (object: any, Objects: any, grid: any, castling: any) => {
 				if (isBlanked) {
 					grid[object.y][object.x - 2].root = true;
 					grid[object.y][object.x - 2].image = object.image;
-					castling.push({ checked: true, id: rook[i].id, name: 'rook', row: object.y, col: object.x - 1, color: object.color });
+					castling.push({ checked: true, id: rook[i].id, name: 'rook', row: object.y, col: object.x - 1, color: object.color, image: rook[i].image });
 				}
 			}
 		}
