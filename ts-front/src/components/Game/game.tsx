@@ -345,7 +345,7 @@ const Game = ({ location }: { location: any }) => {
     }
   }
 
-  const searchRoot = (object: any, type: any) => {
+  const searchRoot = async (object: any, type: any) => {
     let searchBoard = lodash.cloneDeep(board);
 
     init(searchBoard, 'root', false);
@@ -375,7 +375,7 @@ const Game = ({ location }: { location: any }) => {
       case 'rook':
         dir = [[-1, 0], [1, 0], [0, 1], [0, -1]];
         searchBoard = rootFromDir(dir, object, color, searchBoard);
-        searchBoard = checkCastling(object, Objects, searchBoard, castling);
+        searchBoard = checkCastling(object, Objects, searchBoard, board, castling);
 
         break;
       case 'bishop':
@@ -386,8 +386,10 @@ const Game = ({ location }: { location: any }) => {
       case 'king':
         dir = [[-1, -1], [1, 1], [-1, 1], [1, -1], [-1, 0], [1, 0], [0, 1], [0, -1]];
         searchBoard = rootKing(dir, object, color, searchBoard);
-        searchBoard = checkCastling(object, Objects, searchBoard, castling);
+        searchBoard = checkCastling(object, Objects, searchBoard, board, castling);
 
+        if(type === 'searchRoot')
+					searchBoard = await avoidCheck(object, searchBoard);
         break;
       case 'queen':
         dir = [[-1, -1], [1, 1], [-1, 1], [1, -1], [-1, 0], [1, 0], [0, 1], [0, -1]];
@@ -401,7 +403,7 @@ const Game = ({ location }: { location: any }) => {
     if (type === 'searchRoot') {
       setBoard([...searchBoard]);
       return null;
-    } else if (type === 'judgeCheck') {
+    } else if (type !== 'searchRoot') {
       return searchBoard;
     }
   }
@@ -435,6 +437,23 @@ const Game = ({ location }: { location: any }) => {
       }
     }
   }
+
+  const avoidCheck = async (object: any, searchBoard: any) => {
+		const objects: any = Objects.filter(element => object.color === !element.color && element.lived);
+
+		await objects.map(async (element: any) => {
+			let tBoard: any = await searchRoot(element, 'avoidCheck');
+			for (let i = 0; i < 8; i++) {
+				for (let j = 0; j < 8; j++) {
+					if (tBoard[i][j].root && searchBoard[i][j].root) {
+						searchBoard[i][j].root = false;
+					}
+				}
+			}
+		})
+		
+		return searchBoard;
+	}
 
   // 본인의 턴에 체크 상태인지 확인하는 함수
   const judgeCheck = async () => {
