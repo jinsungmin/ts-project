@@ -112,8 +112,7 @@ const GameSolo = () => {
 	const clickControl = (rowIdx: number, colIdx: number) => {
 		console.log(rowIdx, colIdx);
 		let grid = board;
-		//let grid = lodash.cloneDeep(board);
-
+	
 		init(grid, 'click', 0);
 		init(grid, 'image', '');
 
@@ -177,6 +176,8 @@ const GameSolo = () => {
 		
 									grid[tempObject.y][tempObject.x].color = 0;
 									grid[tempObject.y][tempObject.x].object = true;
+
+
 		
 									changeObject(castling[i].id, castling[i].col, castling[i].row, true, true, castling[i].image, castling[i].name);
 								}
@@ -214,9 +215,10 @@ const GameSolo = () => {
 			//console.log(object);
 
 			castling = [];
-
 			setClicked({ row: rowIdx, col: colIdx });
-			searchRoot(object, 'searchRoot');
+
+			//let searchBoard: any = searchRoot(board, object, 'searchRoot');
+			searchRoot(board, object, 'searchRoot');
 		}
 	}
 
@@ -243,7 +245,7 @@ const GameSolo = () => {
 		}
 	}
 
-	const searchRoot = async (object: any, type: any) => {
+	const searchRoot = async (board:any, object: any, type: any) => {
 		let searchBoard = lodash.cloneDeep(board);
 
 		init(searchBoard, 'root', false);
@@ -275,7 +277,7 @@ const GameSolo = () => {
 				dir = [[-1, 0], [1, 0], [0, 1], [0, -1]];
 				searchBoard = rootFromDir(dir, object, color, searchBoard);
 
-				searchBoard = checkCastling(object, Objects, searchBoard, castling);
+				searchBoard = checkCastling(object, Objects, searchBoard, board, castling);
 				break;
 			case 'bishop':
 				dir = [[-1, -1], [1, 1], [-1, 1], [1, -1]];
@@ -286,7 +288,10 @@ const GameSolo = () => {
 
 				searchBoard = rootKing(dir, object, color, searchBoard);
 
-				searchBoard = checkCastling(object, Objects, searchBoard, castling);
+				searchBoard = checkCastling(object, Objects, searchBoard, board, castling);
+
+				if(type === 'searchRoot')
+					searchBoard = await avoidCheck(object, searchBoard);
 
 				break;
 			case 'queen':
@@ -300,9 +305,26 @@ const GameSolo = () => {
 		if (type === 'searchRoot') {
 			setBoard([...searchBoard]);
 			return null;
-		} else if (type === 'judgeCheck') {
+		} else if (type !== 'searchRoot') {
 			return searchBoard;
 		}
+	}
+
+	const avoidCheck = async (object: any, searchBoard: any) => {
+		const objects: any = Objects.filter(element => object.color === !element.color && element.lived);
+
+		await objects.map(async (element: any) => {
+			let tBoard: any = await searchRoot(board, element, 'avoidCheck');
+			for (let i = 0; i < 8; i++) {
+				for (let j = 0; j < 8; j++) {
+					if (tBoard[i][j].root && searchBoard[i][j].root) {
+						searchBoard[i][j].root = false;
+					}
+				}
+			}
+		})
+		
+		return searchBoard;
 	}
 
 	// 본인의 턴에 체크 상태인지 확인하는 함수
@@ -318,7 +340,7 @@ const GameSolo = () => {
 		const objects: any = Objects.filter(element => turn % 2 === 1 ? element.color === true && element.lived : element.color === false && element.lived);
 
 		await objects.map(async (element: any) => {
-			let tBoard: any = await searchRoot(element, 'judgeCheck');
+			let tBoard: any = await searchRoot(board, element, 'judgeCheck');
 			for (let i = 0; i < 8; i++) {
 				for (let j = 0; j < 8; j++) {
 					if (tBoard[i][j].root) {
