@@ -30,7 +30,7 @@ function createWindow() {
   }
   
   mainWindow.removeMenu();
-  mainWindow.setResizable(true);
+  mainWindow.setResizable(false);
   mainWindow.on('closed', () => (mainWindow = null));
   mainWindow.focus();
 }

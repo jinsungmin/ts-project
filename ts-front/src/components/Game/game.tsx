@@ -621,7 +621,7 @@ const Game = ({ location }: { location: any }) => {
         </div>
         <div className="row h-100 justify-content-center align-items-center">
           <div style={{margin: '3%', width: '8rem'}}>
-            <div style={{ textAlign: 'center', fontSize: '1.2rem' }}>
+            <div style={{ textAlign: 'center', fontSize: '1.2rem', fontStyle: 'italic'}}>
               Black Dead
             </div>
 						<br/>
@@ -634,7 +634,7 @@ const Game = ({ location }: { location: any }) => {
             </div>
           </div>
           <div style={{margin: '1rem', width: '8rem'}}>
-            <div style={{ textAlign: 'center', fontSize: '1.2rem'}}>
+            <div style={{ textAlign: 'center', fontSize: '1.2rem', fontStyle: 'italic'}}>
               White Dead
             </div>
 						<br/>
