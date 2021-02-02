@@ -1,4 +1,4 @@
-# Backend server of a chess application made with Node.js
+## Backend server of a chess application made with Node.js
 
 ## 서버 셋업
 
@@ -29,6 +29,7 @@ COOKIE_SECRET=chessdevsecret
 JWT_SECRET=chesstokensecret
 REDIS_HOST=localhost
 REDIS_PORT=6379
+```
 
 ## 서버 시작
 

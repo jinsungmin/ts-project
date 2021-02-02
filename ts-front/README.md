@@ -1,14 +1,18 @@
-# Frontend of a chess application made with Electron and React
+## Frontend of a chess application made with Electron and React
 
-## Available Scripts
+### 프로젝트 모듈 설치
 
-### `npm start`
+- 명령창에서 실행
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+```sh
+npm install
+```
 
-The page will reload if you make edits.\
-You will also see any lint errors in the console.
+## 프로그램 시작
+
+```sh
+npm start
+```
 
 **Note: Run the backend server first, then run it**
 
