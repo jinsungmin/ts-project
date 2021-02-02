@@ -259,34 +259,39 @@ const Game = ({ location }: { location: any }) => {
       changeObject(object.id, colIdx, rowIdx, true, true, object.image, object.name);
       objectChange.push({ id: object.id, row: colIdx, col: rowIdx, lived: true, isMoved: true, object: objectName, image: object.image, name: object.name });
 
-      if (castling.length) {
-        let check: boolean = true;
-        if (castling[0].name === 'king') {
-          check = window.confirm('캐슬링 하시겠습니까?');
-        }
-        if (check) {
-          for (let i = 0; i < castling.length; i++) {
-            if (castling[i].checked) {
-              if (castling[i].color === false) {
-                grid[castling[i].row][castling[i].col].color = 1;
+      if (object.name === 'king' || object.name === 'rook') {
 
-              } else {
-                grid[castling[i].row][castling[i].col].color = -1;
+        if (castling.length) {
+          let check: boolean = true;
+          if (castling[0].name === 'king') {
+            check = window.confirm('캐슬링 하시겠습니까?');
+          }
+          if (check) {
+            for (let i = 0; i < castling.length; i++) {
+              if (castling[i].checked) {
+                if (castling[i].color === false) {
+                  grid[castling[i].row][castling[i].col].color = 1;
+
+                } else {
+                  grid[castling[i].row][castling[i].col].color = -1;
+                }
+                grid[castling[i].row][castling[i].col].object = false;
+
+                const tempObject: any = Objects.find((element) => { return element.id === castling[i].id });  // 캐슬링 대상의 기물
+
+                console.log('log:', castling[i]);
+
+                grid[tempObject.y][tempObject.x].color = 0;
+                grid[tempObject.y][tempObject.x].object = true;
+
+                changeObject(castling[i].id, castling[i].col, castling[i].row, true, true, castling[i].image, castling[i].name);
+                objectChange.push({ id: castling[i].id, row: castling[i].col, col: castling[i].row, lived: true, isMoved: true, object: castling[i].name, image: castling[i].image, name: castling[i].name });
               }
-              grid[castling[i].row][castling[i].col].object = false;
-
-              const tempObject: any = Objects.find((element) => { return element.id === castling[i].id });  // 캐슬링 대상의 기물
-
-              console.log('log:', castling[i]);
-
-              grid[tempObject.y][tempObject.x].color = 0;
-              grid[tempObject.y][tempObject.x].object = true;
-
-              changeObject(castling[i].id, castling[i].col, castling[i].row, true, true, castling[i].image, castling[i].name);
-              objectChange.push({ id: castling[i].id, row: castling[i].col, col: castling[i].row, lived: true, isMoved: true, object: castling[i].name, image: castling[i].image, name: castling[i].name });
             }
           }
         }
+      } else {
+        castling = [];
       }
 
       grid[clicked.row][clicked.col].object = true;
@@ -375,7 +380,9 @@ const Game = ({ location }: { location: any }) => {
       case 'rook':
         dir = [[-1, 0], [1, 0], [0, 1], [0, -1]];
         searchBoard = rootFromDir(dir, object, color, searchBoard);
-        searchBoard = checkCastling(object, Objects, searchBoard, board, castling);
+
+        if (type === 'searchRoot')
+          searchBoard = await checkCastling(object, Objects, searchBoard, board, castling);
 
         break;
       case 'bishop':
@@ -386,10 +393,12 @@ const Game = ({ location }: { location: any }) => {
       case 'king':
         dir = [[-1, -1], [1, 1], [-1, 1], [1, -1], [-1, 0], [1, 0], [0, 1], [0, -1]];
         searchBoard = rootKing(dir, object, color, searchBoard);
-        searchBoard = checkCastling(object, Objects, searchBoard, board, castling);
 
-        if(type === 'searchRoot')
-					searchBoard = await avoidCheck(object, searchBoard);
+        if (type === 'searchRoot')
+          searchBoard = await checkCastling(object, Objects, searchBoard, board, castling);
+
+        if (type === 'searchRoot')
+          searchBoard = await avoidCheck(object, searchBoard);
         break;
       case 'queen':
         dir = [[-1, -1], [1, 1], [-1, 1], [1, -1], [-1, 0], [1, 0], [0, 1], [0, -1]];
@@ -439,21 +448,21 @@ const Game = ({ location }: { location: any }) => {
   }
 
   const avoidCheck = async (object: any, searchBoard: any) => {
-		const objects: any = Objects.filter(element => object.color === !element.color && element.lived);
+    const objects: any = Objects.filter(element => object.color === !element.color && element.lived);
 
-		await objects.map(async (element: any) => {
-			let tBoard: any = await searchRoot(element, 'avoidCheck');
-			for (let i = 0; i < 8; i++) {
-				for (let j = 0; j < 8; j++) {
-					if (tBoard[i][j].root && searchBoard[i][j].root) {
-						searchBoard[i][j].root = false;
-					}
-				}
-			}
-		})
-		
-		return searchBoard;
-	}
+    await objects.map(async (element: any) => {
+      let tBoard: any = await searchRoot(element, 'avoidCheck');
+      for (let i = 0; i < 8; i++) {
+        for (let j = 0; j < 8; j++) {
+          if (tBoard[i][j].root && searchBoard[i][j].root) {
+            searchBoard[i][j].root = false;
+          }
+        }
+      }
+    })
+
+    return searchBoard;
+  }
 
   // 본인의 턴에 체크 상태인지 확인하는 함수
   const judgeCheck = async () => {
@@ -620,11 +629,11 @@ const Game = ({ location }: { location: any }) => {
           {turn % 2 === 1 ? <div style={{ fontSize: '1.5rem' }}>BLACK TURN {turn}</div> : <div style={{ fontSize: '1.5rem' }}>WHITE TURN {turn}</div>}
         </div>
         <div className="row h-100 justify-content-center align-items-center">
-          <div style={{margin: '3%', width: '8rem'}}>
-            <div style={{ textAlign: 'center', fontSize: '1.2rem', fontStyle: 'italic'}}>
+          <div style={{ margin: '3%', width: '8rem' }}>
+            <div style={{ textAlign: 'center', fontSize: '1.2rem', fontStyle: 'italic' }}>
               Black Dead
             </div>
-						<br/>
+            <br />
             <div style={{ textAlign: 'left', height: '5rem', width: '8rem' }}>
               {Objects.map(object => {
                 if (!object.lived && !object.color) {
@@ -633,12 +642,12 @@ const Game = ({ location }: { location: any }) => {
               })}
             </div>
           </div>
-          <div style={{margin: '1rem', width: '8rem'}}>
-            <div style={{ textAlign: 'center', fontSize: '1.2rem', fontStyle: 'italic'}}>
+          <div style={{ margin: '1rem', width: '8rem' }}>
+            <div style={{ textAlign: 'center', fontSize: '1.2rem', fontStyle: 'italic' }}>
               White Dead
             </div>
-						<br/>
-            <div style={{ textAlign: 'left', height: '5rem', width: '8rem'}}>
+            <br />
+            <div style={{ textAlign: 'left', height: '5rem', width: '8rem' }}>
               {Objects.map(object => {
                 if (!object.lived && object.color) {
                   return <img src={object.image} style={{ width: '1.5rem', height: '30px', paddingRight: '0.2rem' }} />
