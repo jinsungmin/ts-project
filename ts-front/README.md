@@ -8,7 +8,7 @@
 npm install
 ```
 
-## 프로그램 시작
+### 프로그램 시작
 
 ```sh
 npm start
