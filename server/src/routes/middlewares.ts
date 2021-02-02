@@ -195,12 +195,12 @@ const validateJwt = function (req, res) {
 
 // A little helper function for generation of refresh tokens
 const generateRefreshToken = function (req, uid) {
+
 	const refresh_token = jwt.sign({ uid }, process.env.JWT_SECRET, { expiresIn: req.app.get("jwt_refresh_expiration") });
 	return refresh_token;
 };
 
 const reflectGameResult = async (username, game_result) => {
-  //let { username, game_result } = req.body;
 
   try {
     const user = await UserModel.findOne({ 'username': username });

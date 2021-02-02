@@ -3,7 +3,7 @@ import { UserModel } from '../user';
 var express = require("express");
 var router = express.Router();
 
-const bcrypt = require("bcrypt");
+const bcrypt = require("bcryptjs");
 const sanitizeHtml = require("sanitize-html");
 const { isJustLoggedIn, getLoggedInUserId, getLoggedInUserInfo } = require("./middlewares");
 
@@ -76,7 +76,7 @@ router.patch("/", isJustLoggedIn, async (req, res, next) => {
     } else {
       await UserModel.updateOne({lose: user.lose +1}, {'username': username }).save();
     }
-    
+
     return res.status(200).json({
       success: true,
       message: "사용자 정보 수정에 성공했습니다",

@@ -277,7 +277,8 @@ const GameSolo = () => {
 				dir = [[-1, 0], [1, 0], [0, 1], [0, -1]];
 				searchBoard = rootFromDir(dir, object, color, searchBoard);
 
-				searchBoard = checkCastling(object, Objects, searchBoard, board, castling);
+				if(type === 'searchRoot')
+					searchBoard = await checkCastling(object, Objects, searchBoard, board, castling);
 				break;
 			case 'bishop':
 				dir = [[-1, -1], [1, 1], [-1, 1], [1, -1]];
@@ -288,7 +289,8 @@ const GameSolo = () => {
 
 				searchBoard = rootKing(dir, object, color, searchBoard);
 
-				searchBoard = checkCastling(object, Objects, searchBoard, board, castling);
+				if(type === 'searchRoot')
+					searchBoard = await checkCastling(object, Objects, searchBoard, board, castling);
 
 				if(type === 'searchRoot')
 					searchBoard = await avoidCheck(object, searchBoard);

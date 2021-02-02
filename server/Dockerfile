@@ -1,7 +1,17 @@
-FROM node:14.12.0
-ENV NODE_ENV=production
-WORKDIR /src
-COPY ["package.json", "package-lock.json*", "./"]
+FROM node:latest
+
+RUN mkdir -p /usr/src/app
+
+WORKDIR /usr/src/app
+
+COPY package.json /usr/src/app/
+
 RUN npm install --production
-COPY . .
-CMD [ "ts-node", "main.ts" ]
+
+RUN npm install nodemon@latest -g
+
+COPY . /usr/src/app
+
+EXPOSE 8080 6379
+
+CMD [ "npm", "start" ]

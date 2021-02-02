@@ -4,7 +4,7 @@ var express = require("express");
 var router = express.Router();
 
 const jwt = require("jsonwebtoken");
-const bcrypt = require("bcrypt");
+const bcrypt = require("bcryptjs");
 const sanitizeHtml = require("sanitize-html");
 const { isJustLoggedIn, isNotLoggedIn, getLoggedInUserId, generateRefreshToken } = require("./middlewares");
 require("dotenv").config();

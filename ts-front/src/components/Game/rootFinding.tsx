@@ -106,34 +106,28 @@ const rootKing = (dir: any, object: any, color: number, grid: any) => {
 	return grid;
 }
 
-const checkCastling = (object: any, Objects: any, grid: any, board: any, castling: any) => {
+const checkCastling = async (object: any, Objects: any, grid: any, board: any, castling: any) => {
 	if (object.name === 'rook' && !object.isMoved) {	// 룩 기준 -> 움직인 적 없이 초기 위치일시
 		if (!object.color && object.y === 0 && (object.x === 0 || object.x === 7)) {	// 블랙
 			const king: any = Objects.find((element:any) => { return element.name === 'king' && element.color === object.color });
 			if (!king.isMoved && king.y === 0 && king.x === 4) {
 				if (object.x === 0) {
-					for (let i = 1; i < 4; i++) {
-						const temp: any = Objects.find((element:any) => { return element.y === 0 && element.x === object.x + i });
-						if (temp) {
-							return grid;
-						}
-						if(judgeCheck(Objects, board, grid, object, king.y, king.x - i + 1)) {
-							return grid;
-						}
+					let check = await judgeBlankedRook(Objects, object, board, grid, king, castling, 0, 4, -1);
+
+					if(check) {
+						return grid;
+					} else {
+						castling.push({ checked: true, id: king.id, name: 'king', row: 0, col: 2, color: object.color, image: king.image });
 					}
-					castling.push({ checked: true, id: king.id, name: 'king', row: 0, col: 2, color: object.color, image: king.image });
 					return grid;
 				} else {
-					for (let i = 1; i < 3; i++) {
-						const temp: any = Objects.find((element:any) => { return element.y === 0 && element.x === object.x - i });
-						if (temp) {
-							return grid;
-						}
-						if(judgeCheck(Objects, board, grid, object, king.y, king.x + i - 1)) {
-							return grid;
-						}
+					let check = await judgeBlankedRook(Objects, object, board, grid, king, castling, 0, 3, 1);
+
+					if(check) {
+						return grid;
+					} else {
+						castling.push({ checked: true, id: king.id, name: 'king', row: 0, col: 6, color: object.color, image: king.image });
 					}
-					castling.push({ checked: true, id: king.id, name: 'king', row: 0, col: 6, color: object.color, image: king.image });
 					return grid;
 				}
 			}
@@ -141,30 +135,24 @@ const checkCastling = (object: any, Objects: any, grid: any, board: any, castlin
 			const king: any = Objects.find((element:any) => { return element.name === 'king' && element.color === object.color });
 			if (!king.isMoved && king.y === 7 && king.x === 4) {
 				if (object.x === 0) {
-					for (let i = 1; i < 4; i++) {
-						const temp: any = Objects.find((element:any) => { return element.y === 7 && element.x === object.x + i });
-						if (temp) {
-							return grid;
-						}
-						if(judgeCheck(Objects, board, grid, object, king.y, king.x - i + 1)) {
-							return grid;
-						}
+
+					let check = await judgeBlankedRook(Objects, object, board, grid, king, castling, 7, 4, -1);
+
+					if(check) {
+						return grid;
+					} else {
+						castling.push({ checked: true, id: king.id, name: 'king', row: 7, col: 2, color: object.color, image: king.image });
 					}
-					castling.push({ checked: true, id: king.id, name: 'king', row: 7, col: 2, color: object.color, image: king.image });
 					return grid;
 				} else {
-					for (let i = 1; i < 3; i++) {
-						const temp: any = Objects.find((element:any) => { return element.y === 7 && element.x === object.x - i });
-						if (temp) {
-							return grid;
-						}
 
-						if(judgeCheck(Objects, board, grid, object, king.y, king.x + i - 1)) {
-							return grid;
-						}
+					let check = await judgeBlankedRook(Objects, object, board, grid, king, castling, 7, 3, 1);
+					
+					if(check) {
+						return grid;
+					} else {
+						castling.push({ checked: true, id: king.id, name: 'king', row: 7, col: 6, color: object.color, image: king.image });
 					}
-					castling.push({ checked: true, id: king.id, name: 'king', row: 7, col: 6, color: object.color, image: king.image });
-
 					return grid;
 				}
 			}
@@ -174,36 +162,18 @@ const checkCastling = (object: any, Objects: any, grid: any, board: any, castlin
 		for (let i = 0; i < rook.length; i++) {
 			if (rook[i].x === 7) {
 				let isBlanked = true;
-				for (let i = 1; i < 3; i++) {
-					const temp: any = Objects.find((element:any) => { return element.y === object.y && element.x === object.x + i });
-					if (temp) {
-						isBlanked = false;
-					}
-					if(judgeCheck(Objects, board, grid, object, object.y, object.x + i - 1)) {
-						isBlanked = false;
-					}
-				}
-				if (isBlanked) {
-					grid[object.y][object.x + 2].root = true;
-					grid[object.y][object.x + 2].image = object.image;
-					castling.push({ checked: true, id: rook[i].id, name: 'rook', row: object.y, col: object.x + 1, color: object.color, image: rook[i].image });
-				}
+				
+				isBlanked = await judgeBlankedKing(Objects,board, grid, object, castling, isBlanked, 1);
+
+				await judgeCastling(isBlanked, grid, object, castling, rook[i], 1);
+
 			} else if (rook[i].x === 0) {
 				let isBlanked = true;
-				for (let i = 1; i < 4; i++) {
-					const temp: any = Objects.find((element:any) => { return element.y === object.y && element.x === object.x - i });
-					if (temp) {
-						isBlanked = false;
-					}
-					if(judgeCheck(Objects, board, grid, object, object.y, object.x - i + 1)) {
-						isBlanked = false;
-					}
-				}
-				if (isBlanked) {
-					grid[object.y][object.x - 2].root = true;
-					grid[object.y][object.x - 2].image = object.image;
-					castling.push({ checked: true, id: rook[i].id, name: 'rook', row: object.y, col: object.x - 1, color: object.color, image: rook[i].image });
-				}
+				
+				isBlanked = await judgeBlankedKing(Objects,board, grid, object, castling, isBlanked, -1);
+
+				await judgeCastling(isBlanked, grid, object, castling, rook[i], -1);
+
 			}
 		}
 		return grid;
@@ -211,18 +181,67 @@ const checkCastling = (object: any, Objects: any, grid: any, board: any, castlin
 	return grid;
 }
 
-const judgeCheck = async (Objects:any, board:any, searchBoard:any, object:any, row:number, col:number) => {
+const judgeCastling = (isBlanked:boolean, grid:any, object: any, castling:any, rook:any, bool:number) => {
+	if (isBlanked) {
+		grid[object.y][object.x + 2 * bool].root = true;
+		grid[object.y][object.x + 2 * bool].image = object.image;
+		castling.push({ checked: true, id: rook.id, name: 'rook', row: object.y, col: object.x + 1 * bool, color: object.color, image: rook.image });
+	}
+}
+
+const judgeBlankedRook = async (Objects:any, object:any, board:any, grid:any, king:any, castling:any, row: number, idx: number, bool:number) => {
+	for (let i = 1; i < idx; i++) {
+		const temp: any = Objects.find((element:any) => { return element.y === row && element.x === object.x - i * bool });
+		if (temp) {
+			return true;
+		}
+		
+		if(!await judgeCheck(Objects, board, grid, object, king.y, king.x + (i - 1) * bool, castling)) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
+const judgeBlankedKing = async (Objects:any, board:any, grid:any, object:any, castling:any, isBlanked:boolean, bool:number) => {
+	for (let j = 1; j < 4; j++) {
+		if(!await judgeCheck(Objects, board, grid, object, object.y, object.x + (j - 1) * bool, castling)) {
+			isBlanked = false;
+			console.log(object.y, object.x + (j - 1) * bool, '123');
+			return isBlanked;
+		}
+		
+		const temp: any = Objects.find((element:any) => { return element.y === object.y && element.x === object.x + j * bool });
+		if (temp && temp.name !== 'rook') {
+			isBlanked = false;
+			return isBlanked;
+		}
+	}
+
+	return isBlanked;
+}
+
+const judgeCheck = async (Objects:any, board:any, searchBoard:any, object:any, row:number, col:number, castling: any) => {
 	const objects: any = Objects.filter((element:any) => object.color === !element.color && element.lived);
+
+	let check = true;
 
 	await objects.map(async (element: any) => {
 		let tBoard: any = await searchRoot(board, element, 'judgeCheck');
 
 		if(tBoard[row][col].root) {
-			searchBoard[row][col].root = false;
+			check = false;
+			if(object.name === 'king') {
+				searchBoard[object.y][object.x - 2].root = false;
+				searchBoard[object.y][object.x - 2].image = null;
+			}
+			castling = [];
 		}
 	})
 	
-	 return searchBoard;
+	console.log(row, col, check);
+	return check;
 }
 
 // 앙 파상을 탐색하는 함수
@@ -259,6 +278,8 @@ const rootInPassing = (object: any, searchBoard: any, inPassing: any) => {
 	}
 	return searchBoard;
 }
+
+
 
 const searchRoot = async (board:any, object: any, type: any) => {
 	let searchBoard = lodash.cloneDeep(board);
